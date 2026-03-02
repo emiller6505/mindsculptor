@@ -1,15 +1,19 @@
 import type { Metadata } from 'next'
+import { GeistSans } from 'geist/font/sans'
+import { GeistMono } from 'geist/font/mono'
+import Nav from '@/components/Nav'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'Firemind - Metagame Genius',
-  description: 'MTG metagame oracle powered by real tournament data',
+  title: 'Firemind — MTG Metagame Oracle',
+  description: 'Know what\'s winning before you register. MTG metagame oracle powered by real tournament data.',
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
-      <body className="bg-gray-950 text-gray-100 antialiased">
+    <html lang="en" className={`${GeistSans.variable} ${GeistMono.variable}`}>
+      <body className="bg-canvas text-ink antialiased min-h-screen font-sans">
+        <Nav />
         {children}
       </body>
     </html>

@@ -1,202 +1,150 @@
 'use client'
 
-import { useState, useRef, useEffect, useCallback } from 'react'
-import ReactMarkdown from 'react-markdown'
-import remarkGfm from 'remark-gfm'
-import type { Components } from 'react-markdown'
+import { useState } from 'react'
+import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 
-function CodeBlock({ children }: { children: string }) {
-  const [copied, setCopied] = useState(false)
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+const SUGGESTED_PROMPTS = [
+  "What's dominating Modern?",
+  "Best deck for RCQs?",
+  "Is Amulet Titan tier 1?",
+  "Standard after the ban?",
+]
 
-  const copy = useCallback(() => {
-    navigator.clipboard.writeText(children).then(() => {
-      setCopied(true)
-      if (timerRef.current) clearTimeout(timerRef.current)
-      timerRef.current = setTimeout(() => setCopied(false), 2000)
-    })
-  }, [children])
+// Placeholder meta bars — will be wired to live data when /data is built
+const MODERN_META = [
+  { name: 'Murktide Regent',  share: 18.4, trend: '↑' },
+  { name: 'Amulet Titan',     share: 13.1, trend: '→' },
+  { name: 'Boros Energy',     share:  9.7, trend: '↑↑' },
+  { name: 'Living End',       share:  8.2, trend: '↓' },
+]
 
-  useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current) }, [])
+const STANDARD_META = [
+  { name: 'Domain Ramp',      share: 21.0, trend: '↑↑' },
+  { name: 'Azorius Soldiers', share: 15.3, trend: '↑' },
+  { name: 'Esper Midrange',   share: 11.8, trend: '→' },
+  { name: 'Mono-Red Aggro',   share:  9.4, trend: '↓' },
+]
 
+function MetaBar({ name, share, trend }: { name: string; share: number; trend: string }) {
+  const trendColor = trend.includes('↑') ? 'text-emerald-400' : trend === '↓' ? 'text-flame' : 'text-ash'
   return (
-    <div className="relative group my-3">
-      <pre className="bg-gray-950 border border-gray-800 rounded-lg px-4 py-3 text-sm text-gray-300 font-mono overflow-x-auto whitespace-pre">
-        {children}
-      </pre>
-      <button
-        onClick={copy}
-        className="absolute top-2 right-2 text-xs text-gray-500 hover:text-gray-300 bg-gray-900 border border-gray-700 rounded px-2 py-1 opacity-0 group-hover:opacity-100 transition-opacity"
-      >
-        {copied ? 'Copied' : 'Copy'}
-      </button>
+    <div className="flex items-center gap-3 py-1.5">
+      <div className="w-full max-w-[120px] bg-edge rounded-full h-1.5 shrink-0">
+        <div
+          className="bg-spark/60 h-1.5 rounded-full"
+          style={{ width: `${(share / 25) * 100}%` }}
+        />
+      </div>
+      <span className="text-sm text-ink/80 w-40 shrink-0 truncate">{name}</span>
+      <span className="text-xs text-ash tabular-nums w-10 shrink-0">{share}%</span>
+      <span className={`text-xs font-medium ${trendColor}`}>{trend}</span>
     </div>
   )
 }
 
-const mdComponents: Components = {
-  code({ className, children, ...props }) {
-    // Multiline content = fenced block; single-line = inline code
-    if (String(children).trim().includes('\n')) {
-      return <CodeBlock>{String(children).replace(/\n$/, '')}</CodeBlock>
-    }
-    return (
-      <code className="text-indigo-300 bg-gray-900 px-1 rounded text-sm font-mono" {...props}>
-        {children}
-      </code>
-    )
-  },
-}
-
-type Confidence = 'LOW' | 'MEDIUM' | 'HIGH' | 'VERY HIGH'
-
-const CONFIDENCE_COLORS: Record<Confidence, string> = {
-  'VERY HIGH': 'text-emerald-500',
-  'HIGH':      'text-blue-400',
-  'MEDIUM':    'text-yellow-500',
-  'LOW':       'text-red-400',
-}
-
-interface Message {
-  role: 'user' | 'oracle'
-  content: string
-  meta?: { format: string | null; window_days: number; decks_analyzed: number; confidence?: Confidence }
-}
-
-export default function Home() {
-  const [messages, setMessages] = useState<Message[]>([])
+export default function LandingPage() {
   const [input, setInput] = useState('')
-  const [loading, setLoading] = useState(false)
-  const bottomRef = useRef<HTMLDivElement>(null)
+  const router = useRouter()
 
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages, loading])
-
-  async function submit(e: React.FormEvent) {
+  function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    const query = input.trim()
-    if (!query || loading) return
+    const q = input.trim()
+    if (!q) return
+    router.push(`/chat?q=${encodeURIComponent(q)}`)
+  }
 
-    setInput('')
-    setMessages(prev => [...prev, { role: 'user', content: query }])
-    setLoading(true)
-
-    try {
-      const res = await fetch('/api/query', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query }),
-      })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error ?? 'Unknown error')
-
-      setMessages(prev => [...prev, {
-        role: 'oracle',
-        content: data.answer,
-        meta: {
-          format: data.intent?.format,
-          window_days: data.data?.window_days,
-          decks_analyzed: data.data?.top_decks?.length ?? 0,
-          confidence: data.data?.confidence,
-        },
-      }])
-    } catch (err) {
-      setMessages(prev => [...prev, {
-        role: 'oracle',
-        content: `Error: ${err instanceof Error ? err.message : 'Something went wrong'}`,
-      }])
-    } finally {
-      setLoading(false)
-    }
+  function handlePrompt(prompt: string) {
+    router.push(`/chat?q=${encodeURIComponent(prompt)}`)
   }
 
   return (
-    <div className="flex flex-col h-screen max-w-3xl mx-auto">
-      {/* Header */}
-      <div className="border-b border-gray-800 px-6 py-4 flex-shrink-0">
-        <h1 className="text-lg font-semibold tracking-tight">Firemind</h1>
-        <p className="text-xs text-gray-500 mt-0.5">MTG metagame oracle · real tournament data</p>
-      </div>
+    <main className="max-w-4xl mx-auto px-6 py-16 space-y-16">
 
-      {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-6 py-4 space-y-6">
-        {messages.length === 0 && (
-          <div className="text-center text-gray-600 mt-24 space-y-2">
-            <p className="text-sm">Ask about the current metagame, what to play, or how cards perform.</p>
-            <p className="text-xs text-gray-700">e.g. "What are the best Modern decks right now?" or "How does Burn match up against Tron?"</p>
-          </div>
-        )}
+      {/* Hero */}
+      <div className="space-y-8">
+        <div className="space-y-3">
+          <h1 className="text-3xl font-semibold tracking-tight text-ink">
+            Know what&apos;s winning.<br />
+            <span className="text-ash font-normal">Before you register.</span>
+          </h1>
+        </div>
 
-        {messages.map((msg, i) => (
-          <div key={i} className={msg.role === 'user' ? 'flex justify-end' : 'flex justify-start'}>
-            {msg.role === 'user' ? (
-              <div className="bg-indigo-600 text-white rounded-2xl rounded-tr-sm px-4 py-2.5 max-w-[80%] text-sm">
-                {msg.content}
-              </div>
-            ) : (
-              <div className="max-w-full space-y-2">
-                <div className="prose prose-invert prose-sm max-w-none
-                  prose-headings:font-semibold prose-headings:text-gray-100
-                  prose-p:text-gray-300 prose-p:leading-relaxed
-                  prose-strong:text-gray-100
-                  prose-ul:text-gray-300 prose-ol:text-gray-300
-                  prose-li:my-0.5
-                  prose-table:text-sm prose-th:text-gray-300 prose-td:text-gray-400
-                  prose-code:text-indigo-300 prose-code:bg-gray-900 prose-code:px-1 prose-code:rounded">
-                  <ReactMarkdown remarkPlugins={[remarkGfm]} components={mdComponents}>{msg.content}</ReactMarkdown>
-                </div>
-                {msg.meta && (
-                  <p className="text-xs text-gray-600">
-                    {[
-                      msg.meta.format,
-                      msg.meta.window_days && `last ${msg.meta.window_days}d`,
-                      msg.meta.decks_analyzed && `${msg.meta.decks_analyzed} decks`,
-                    ].filter(Boolean).join(' · ')}
-                    {msg.meta.confidence && (
-                      <span className={`ml-2 font-medium ${CONFIDENCE_COLORS[msg.meta.confidence]}`}>
-                        {msg.meta.confidence}
-                      </span>
-                    )}
-                  </p>
-                )}
-              </div>
-            )}
-          </div>
-        ))}
-
-        {loading && (
-          <div className="flex justify-start">
-            <div className="text-gray-500 text-sm animate-pulse">Thinking…</div>
-          </div>
-        )}
-
-        <div ref={bottomRef} />
-      </div>
-
-      {/* Input */}
-      <div className="border-t border-gray-800 px-6 py-4 flex-shrink-0">
-        <form onSubmit={submit} className="flex gap-3">
+        {/* Oracle input */}
+        <form onSubmit={handleSubmit} className="flex gap-3">
           <input
             type="text"
             value={input}
             onChange={e => setInput(e.target.value)}
             placeholder="Ask about the metagame…"
-            disabled={loading}
-            className="flex-1 bg-gray-900 border border-gray-700 rounded-xl px-4 py-2.5 text-sm
-              placeholder-gray-600 focus:outline-none focus:border-indigo-500 focus:ring-1
-              focus:ring-indigo-500 disabled:opacity-50 transition-colors"
+            className="flex-1 bg-surface border border-edge rounded-xl px-4 py-3 text-sm text-ink
+              placeholder-ash focus:outline-none focus:border-spark/50 focus:glow-spark-sm transition-all"
           />
           <button
             type="submit"
-            disabled={loading || !input.trim()}
-            className="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed
-              text-white text-sm font-medium px-5 py-2.5 rounded-xl transition-colors"
+            disabled={!input.trim()}
+            className="bg-spark hover:bg-spark/90 disabled:opacity-40 disabled:cursor-not-allowed
+              text-canvas text-sm font-medium px-6 py-3 rounded-xl transition-colors shrink-0"
           >
-            Ask
+            Ask →
           </button>
         </form>
+
+        {/* Suggested prompts */}
+        <div className="flex flex-wrap gap-2">
+          {SUGGESTED_PROMPTS.map(prompt => (
+            <button
+              key={prompt}
+              onClick={() => handlePrompt(prompt)}
+              className="text-sm text-ash hover:text-ink border border-edge hover:border-spark/30 rounded-lg px-3 py-1.5 transition-colors"
+            >
+              {prompt}
+            </button>
+          ))}
+        </div>
       </div>
-    </div>
+
+      {/* Divider */}
+      <div className="border-t border-edge" />
+
+      {/* Live meta snapshot — placeholder until /data is wired */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xs font-semibold text-ash uppercase tracking-widest">Modern</h2>
+            <Link href="/data/modern" className="text-xs text-spark hover:text-spark/80 transition-colors">
+              Full breakdown →
+            </Link>
+          </div>
+          {MODERN_META.map(d => <MetaBar key={d.name} {...d} />)}
+        </div>
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xs font-semibold text-ash uppercase tracking-widest">Standard</h2>
+            <Link href="/data/standard" className="text-xs text-spark hover:text-spark/80 transition-colors">
+              Full breakdown →
+            </Link>
+          </div>
+          {STANDARD_META.map(d => <MetaBar key={d.name} {...d} />)}
+        </div>
+      </div>
+
+      {/* CTAs */}
+      <div className="flex items-center gap-4">
+        <Link
+          href="/chat"
+          className="bg-spark hover:bg-spark/90 text-canvas text-sm font-medium px-5 py-2.5 rounded-xl transition-colors"
+        >
+          Ask the Firemind — it&apos;s free
+        </Link>
+        <Link
+          href="/data"
+          className="text-sm text-ash hover:text-ink border border-edge hover:border-spark/30 rounded-xl px-5 py-2.5 transition-colors"
+        >
+          See metagame charts →
+        </Link>
+      </div>
+
+    </main>
   )
 }
