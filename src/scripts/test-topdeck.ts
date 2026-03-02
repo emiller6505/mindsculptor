@@ -6,6 +6,7 @@ import 'dotenv/config'
 
 const API_KEY = process.env.TOPDECK_API_KEY
 if (!API_KEY) throw new Error('TOPDECK_API_KEY not set')
+const key: string = API_KEY
 
 const BASE_URL = 'https://topdeck.gg/api'
 
@@ -13,7 +14,7 @@ async function post(path: string, body: unknown) {
   const res = await fetch(`${BASE_URL}${path}`, {
     method: 'POST',
     headers: {
-      'Authorization': API_KEY,
+      'Authorization': key,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify(body),

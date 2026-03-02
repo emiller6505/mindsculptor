@@ -25,7 +25,8 @@ Operate autonomously — proceed without asking for confirmation on most actions
 
 ## Quality
 - Always run tests (if they exist) after making changes and before considering a task done
-- Fix failing tests before marking work complete
+- Always run `npx tsc --noEmit` after making changes and before considering a task done
+- Fix type errors and failing tests before marking work complete
 
 ## Self-Audits (mandatory)
 After every major feature, re-read all changed files as if seeing them for the first time as a new principal engineer. Check for:

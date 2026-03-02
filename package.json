@@ -16,7 +16,8 @@
     "snapshot": "tsx src/scripts/run-snapshot.ts",
     "embed": "tsx src/scripts/run-embed.ts",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "db:push": "supabase db push"
   },
   "repository": {
     "type": "git",
