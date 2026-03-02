@@ -1,6 +1,26 @@
 import { supabase } from '../lib/supabase'
 import type { Intent } from './intent'
 
+// Voyage embeddings are optional — only used if VOYAGE_API_KEY is set
+async function resolveArchetypeIds(archetypes: string[], format: string | null): Promise<string[] | null> {
+  if (!process.env.VOYAGE_API_KEY || !format) return null
+  try {
+    const { embed } = await import('../lib/voyage')
+    const [vector] = await embed([archetypes.join(' ')])
+    const { data, error } = await supabase.rpc('match_archetypes', {
+      query_embedding: JSON.stringify(vector),
+      format_filter: format,
+      match_count: archetypes.length * 2,
+    })
+    if (error || !data?.length) return null
+    return (data as { id: string; similarity: number }[])
+      .filter(r => r.similarity >= 0.7)
+      .map(r => r.id)
+  } catch {
+    return null
+  }
+}
+
 export interface DeckSummary {
   pilot: string
   placement: number | null
@@ -48,8 +68,15 @@ async function fetchTopDecks(
   archetype: string | null,
   archetype_b: string | null,
 ): Promise<DeckSummary[]> {
-  // Fetch top-placing decks with their card lists.
-  // Limit to top 24 by placement to keep context size reasonable.
+  const archetypeHints = [archetype, archetype_b].filter(Boolean) as string[]
+
+  // If archetypes are mentioned, try to resolve them to IDs via vector search first.
+  // If that fails (no VOYAGE_API_KEY or no embeddings yet), fall through to keyword heuristic below.
+  let archetypeIds: string[] | null = null
+  if (archetypeHints.length > 0) {
+    archetypeIds = await resolveArchetypeIds(archetypeHints, format)
+  }
+
   let query = supabase
     .from('decks')
     .select(`
@@ -70,6 +97,16 @@ async function fetchTopDecks(
 
   if (format) query = query.eq('tournaments.format', format)
 
+  // When we have resolved archetype IDs, filter decks via deck_archetypes join
+  if (archetypeIds && archetypeIds.length > 0) {
+    const { data: archetypeDecks } = await supabase
+      .from('deck_archetypes')
+      .select('deck_id')
+      .in('archetype_id', archetypeIds)
+    const deckIds = (archetypeDecks ?? []).map(r => r.deck_id)
+    if (deckIds.length > 0) query = query.in('id', deckIds)
+  }
+
   const { data, error } = await query
   if (error) throw new Error(`Deck retrieval error: ${error.message}`)
 
@@ -87,20 +124,14 @@ async function fetchTopDecks(
     }
   })
 
-  // For matchup and deck_advice with a specific archetype, filter by key card overlap.
-  // This is a heuristic until archetype classification lands in Phase 4.
-  const archetypes = [archetype, archetype_b].filter(Boolean) as string[]
-  if (archetypes.length > 0) {
-    decks = filterByArchetypeHint(decks, archetypes)
+  // Fallback: keyword heuristic when vector search isn't available or returned nothing
+  if (archetypeHints.length > 0 && archetypeIds === null) {
+    decks = filterByArchetypeHint(decks, archetypeHints)
   }
 
   return decks
 }
 
-// Simple heuristic: an archetype hint like "Burn" → look for decks containing Eidolon of the Great Revel,
-// Lightning Bolt, etc. We do this by checking if the archetype name appears as a substring in any card names
-// or if the archetype name words match common card names in the mainboard.
-// Phase 4 will replace this with proper archetype classification.
 function filterByArchetypeHint(decks: DeckSummary[], archetypes: string[]): DeckSummary[] {
   const keywords = archetypes.flatMap(a => a.toLowerCase().split(/\s+/))
   return decks.filter(d =>

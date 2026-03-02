@@ -13,6 +13,7 @@
     "query": "tsx src/scripts/test-query.ts",
     "cluster": "tsx src/scripts/run-cluster.ts",
     "snapshot": "tsx src/scripts/run-snapshot.ts",
+    "embed": "tsx src/scripts/run-embed.ts",
     "test": "vitest run",
     "test:watch": "vitest"
   },
@@ -50,6 +51,7 @@
     "react-markdown": "^10.1.0",
     "remark-gfm": "^4.0.1",
     "stream-json": "^1.9.1",
-    "tsx": "^4.21.0"
+    "tsx": "^4.21.0",
+    "voyageai": "^0.1.0"
   }
 }

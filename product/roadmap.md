@@ -38,16 +38,16 @@ The free half of the product. SEO flywheel, acquisition surface, and conversion 
 into the oracle. All charts are public, SSR, no auth required.
 
 **Includes:**
-- `/data/[format]` — format overview: archetype breakdown chart, filterable by time
-  range (7d / 30d / 90d), sortable by meta share or win rate
-- `/data/[format]/[archetype]` — archetype detail: trend charts, win rate over time,
-  recent MTGO results, and oracle CTA cluster
+- `/data/[format]` — meta share bar chart, top movers widget, meta share trend lines
+- `/data/[format]/[archetype]` — share over time, win rate over time, recent MTGO results
 - Oracle CTAs on every archetype page: free "Ask the Firemind" + Spike-only
   "Generate deck list" and "Sideboard plan vs the field"
 - `/chat/results/[id]` — shareable single-response permalinks for Reddit/social
 - Dynamic OG images via `@vercel/og` (archetype name, meta %, trend arrow)
 - Sitemap covering all metagame pages
 - All content in real HTML — indexable by Google
+
+See `charts.md` for full chart specs and rationale.
 
 ---
 
@@ -57,6 +57,19 @@ Features ship one at a time as they're ready — no big v2 release. Each item be
 self-contained and can go out independently. Order reflects priority, not batching.
 
 ### Tier 1 — first out the door
+
+**Win rate vs meta share scatter plot**
+The clearest visual differentiator from MTGGoldfish. Four-quadrant bubble chart —
+X: meta share, Y: win rate, bubble size: events played. Directly answers "what should
+I play" in a way the bar chart can't. Requires no new data. See `charts.md`.
+
+**Event placement distribution**
+Per-archetype bar chart: how often a deck places 1st / top 4 / top 8 / top 16 / out.
+Spike potential vs consistency — a different signal from win rate alone. See `charts.md`.
+
+**Matchup matrix (Spike only)**
+Win rate vs each top archetype, shown as a heatmap on the archetype detail page.
+Locked for Casual. See `charts.md`.
 
 **Alert emails + weekly digest**
 The stickiness engine. Brings Spike subscribers back every week without them having

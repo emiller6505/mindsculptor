@@ -6,6 +6,10 @@
 import 'dotenv/config'
 import { scrapeNewMtgoEvents } from '../scrapers/mtgo.js'
 import { parsePendingMtgoJobs } from '../parsers/mtgo.js'
+import { scrapeNewMtggoldfishEvents } from '../scrapers/mtggoldfish.js'
+import { parsePendingMtggoldfishJobs } from '../parsers/mtggoldfish.js'
+import { scrapeNewMtgtop8Events } from '../scrapers/mtgtop8.js'
+import { parsePendingMtgtop8Jobs } from '../parsers/mtgtop8.js'
 
 async function main() {
   console.log(`[scrape] Starting scrape run at ${new Date().toISOString()}`)
@@ -13,9 +17,11 @@ async function main() {
   await scrapeNewMtgoEvents()
   await parsePendingMtgoJobs()
 
-  // Future scrapers added here:
-  // await scrapeNewMtggoldfishEvents()
-  // await scrapeNewMtgtop8Events()
+  await scrapeNewMtggoldfishEvents()
+  await parsePendingMtggoldfishJobs()
+
+  await scrapeNewMtgtop8Events()
+  await parsePendingMtgtop8Jobs()
 
   console.log(`[scrape] Scrape run complete at ${new Date().toISOString()}`)
 }
