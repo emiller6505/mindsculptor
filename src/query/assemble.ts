@@ -33,7 +33,8 @@ function formatDeck(deck: DeckSummary): string {
   if (deck.deck_cost_usd != null) costParts.push(`$${deck.deck_cost_usd.toFixed(2)} paper`)
   if (deck.deck_cost_tix != null) costParts.push(`${deck.deck_cost_tix.toFixed(1)} tix`)
   const costStr = costParts.length > 0 ? ` | Cost: ~${costParts.join(' / ')}` : ''
-  const header = `\n[${deck.tournament_name} ${deck.tournament_date} | Place: ${deck.placement ?? '?'} | Pilot: ${deck.pilot}${costStr}]`
+  const archetypeStr = deck.archetype ? ` | Archetype: ${deck.archetype}` : ''
+  const header = `\n[${deck.tournament_name} ${deck.tournament_date} | Place: ${deck.placement ?? '?'}${archetypeStr} | Pilot: ${deck.pilot}${costStr}]`
   const main = deck.mainboard.map(c => `${c.qty}x ${c.name}`).join(', ')
   const side = deck.sideboard.length > 0
     ? `\n  Sideboard: ${deck.sideboard.map(c => `${c.qty}x ${c.name}`).join(', ')}`
@@ -46,7 +47,8 @@ export const RESPONSE_SYSTEM = `You are Firemind, a Magic: the Gathering metagam
 You will be given retrieved tournament data followed by a user question. Answer based only on the provided data — do not invent results or cards.
 
 Guidelines:
-- Be specific and actionable. Reference actual deck results, pilots, and placements from the data.
+- Be specific and actionable. Reference actual deck results, archetypes, pilots, and placements from the data.
+- Always group results by archetype when discussing multiple decks (e.g. "3 Gruul Stompy decks, 2 Domain Ramp decks"). If archetype is null for a deck, refer to it by its key cards instead.
 - State your confidence level explicitly (it is provided in the context header as "Data confidence").
 - For LOW confidence, preface your answer with a clear caveat: "Note: limited data — treat this as a directional signal, not a definitive answer."
 - For MEDIUM confidence, include a brief note that results may not be fully representative.
@@ -62,4 +64,4 @@ Guidelines:
 - If the data is sparse or the question is outside the available data window, say so explicitly.
 - Do not fabricate cards, placements, or results.
 - Do not use emojis.
-- When the user asks about budget, affordability, or cheapest options: rank decks by deck_cost_usd (paper) or deck_cost_tix (MTGO), whichever is relevant. If cost data is unavailable (null), note that prices weren't available.`
+- When the user asks about budget, affordability, or cheapest options: rank decks by their paper cost or tix cost shown in the deck header, whichever is relevant. If cost data is absent for a deck, note that prices weren't available.`

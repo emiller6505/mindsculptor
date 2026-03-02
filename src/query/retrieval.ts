@@ -27,6 +27,7 @@ export interface DeckSummary {
   tournament_name: string
   tournament_date: string
   tier: string | null
+  archetype: string | null
   mainboard: { name: string; qty: number }[]
   sideboard: { name: string; qty: number }[]
   deck_cost_usd: number | null
@@ -124,6 +125,12 @@ async function fetchTopDecks(
         date,
         format,
         tier
+      ),
+      deck_archetypes (
+        confidence,
+        archetypes (
+          name
+        )
       )
     `)
     .gte('tournaments.date', cutoff)
@@ -149,12 +156,17 @@ async function fetchTopDecks(
   let decks = (data ?? []).map(row => {
     const t = row.tournaments as unknown as { name: string; date: string; format: string; tier: string | null }
     const rawList = row.raw_list as { mainboard: { name: string; qty: number }[]; sideboard: { name: string; qty: number }[] } | null
+    const deckArchetypes = row.deck_archetypes as unknown as Array<{ confidence: number; archetypes: { name: string } | null }> | null
+    const topArchetype = (deckArchetypes ?? [])
+      .filter(da => da.archetypes?.name)
+      .sort((a, b) => b.confidence - a.confidence)[0]
     return {
       pilot: row.pilot ?? 'Unknown',
       placement: row.placement,
       tournament_name: t.name,
       tournament_date: t.date,
       tier: t.tier,
+      archetype: topArchetype?.archetypes?.name ?? null,
       mainboard: rawList?.mainboard ?? [],
       sideboard: rawList?.sideboard ?? [],
     }
@@ -172,10 +184,12 @@ async function attachDeckCosts(decks: RawDeck[]): Promise<DeckSummary[]> {
   if (decks.length === 0) return decks.map(d => ({ ...d, deck_cost_usd: null, deck_cost_tix: null }))
 
   const allNames = [...new Set(decks.flatMap(d => d.mainboard.map(c => c.name)))]
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('cards')
     .select('name, usd, tix')
     .in('name', allNames)
+
+  if (error) console.warn(`[retrieval] attachDeckCosts price lookup failed: ${error.message}`)
 
   const priceMap = new Map<string, { usd: number | null; tix: number | null }>()
   for (const row of data ?? []) {
@@ -183,13 +197,21 @@ async function attachDeckCosts(decks: RawDeck[]): Promise<DeckSummary[]> {
   }
 
   return decks.map(d => {
-    let usdTotal = 0, tixTotal = 0, hasUsd = false, hasTix = false
+    let usdTotal = 0, tixTotal = 0, usdQty = 0, tixQty = 0, totalQty = 0
     for (const card of d.mainboard) {
+      totalQty += card.qty
       const p = priceMap.get(card.name)
-      if (p?.usd != null) { usdTotal += card.qty * p.usd; hasUsd = true }
-      if (p?.tix != null) { tixTotal += card.qty * p.tix; hasTix = true }
+      if (p?.usd != null) { usdTotal += card.qty * p.usd; usdQty += card.qty }
+      if (p?.tix != null) { tixTotal += card.qty * p.tix; tixQty += card.qty }
     }
-    return { ...d, deck_cost_usd: hasUsd ? Math.round(usdTotal * 100) / 100 : null, deck_cost_tix: hasTix ? Math.round(tixTotal * 100) / 100 : null }
+    // Require ≥75% of mainboard cards (by quantity) to have prices before reporting a cost.
+    // Partial coverage produces misleadingly low numbers.
+    const minCoverage = totalQty * 0.75
+    return {
+      ...d,
+      deck_cost_usd: usdQty >= minCoverage ? Math.round(usdTotal * 100) / 100 : null,
+      deck_cost_tix: tixQty >= minCoverage ? Math.round(tixTotal * 100) / 100 : null,
+    }
   })
 }
 

@@ -36,6 +36,7 @@ export const DECK_FIXTURE = {
     format: 'modern',
     tier: 'challenge',
   },
+  deck_archetypes: [],
 }
 
 // DeckSummary shape (what retrieveContext maps DB rows into — used by assembleContext)
@@ -45,6 +46,7 @@ export const DECK_SUMMARY_FIXTURE = {
   tournament_name: 'Modern Challenge 32',
   tournament_date: '2026-02-28',
   tier: 'challenge',
+  archetype: 'Burn',
   mainboard: [
     { name: 'Lightning Bolt', qty: 4 },
     { name: 'Goblin Guide', qty: 4 },

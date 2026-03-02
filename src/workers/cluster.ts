@@ -2,6 +2,8 @@ import { supabase } from '../lib/supabase'
 import { llm } from '../lib/llm'
 
 const JACCARD_THRESHOLD = 0.5
+const CENTROID_MIN_FREQ = 0.5      // card must appear in ≥50% of members to be in centroid
+const MAX_REFINEMENT_ITERS = 10
 const MIN_CLUSTER_SIZE = 2
 const DEFAULT_WINDOW_DAYS = 90
 
@@ -11,7 +13,6 @@ interface DeckRecord {
 }
 
 interface Cluster {
-  representative: DeckRecord  // first deck added — used as centroid for similarity
   decks: DeckRecord[]
 }
 
@@ -32,22 +33,39 @@ export async function clusterArchetypes(format: string, windowDays = DEFAULT_WIN
     return
   }
 
-  const decks: DeckRecord[] = data.flatMap(row => {
+  const rawDecks: DeckRecord[] = data.flatMap(row => {
     const rawList = row.raw_list as { mainboard: { name: string; qty: number }[] } | null
     if (!rawList?.mainboard?.length) return []
     return [{ id: row.id, cardSet: new Set(rawList.mainboard.map(c => c.name)) }]
   })
 
+  // Option C: sort by typicality so the most representative decks seed first.
+  // Score each deck by summing the global pool frequency of each of its cards.
+  // Higher-scoring decks share more cards with the broader field — better seeds.
+  const globalFreq = new Map<string, number>()
+  for (const deck of rawDecks) {
+    for (const card of deck.cardSet) globalFreq.set(card, (globalFreq.get(card) ?? 0) + 1)
+  }
+  const decks = [...rawDecks].sort((a, b) => {
+    const scoreA = [...a.cardSet].reduce((s, c) => s + (globalFreq.get(c) ?? 0), 0)
+    const scoreB = [...b.cardSet].reduce((s, c) => s + (globalFreq.get(c) ?? 0), 0)
+    return scoreB - scoreA
+  })
+
   console.log(`[cluster] ${format}: clustering ${decks.length} decks`)
 
-  // Greedy Jaccard clustering — O(n*k) where k = number of clusters
+  // Greedy Jaccard clustering — compare each deck against the current cluster centroid.
+  // Centroid cache is kept per cluster and updated incrementally as decks join.
   const clusters: Cluster[] = []
+  const centroidCache = new Map<Cluster, Set<string>>()
+
   for (const deck of decks) {
     let bestCluster: Cluster | null = null
     let bestScore = 0
 
     for (const cluster of clusters) {
-      const score = jaccard(deck.cardSet, cluster.representative.cardSet)
+      const centroid = centroidCache.get(cluster)!
+      const score = jaccard(deck.cardSet, centroid)
       if (score > bestScore) {
         bestScore = score
         bestCluster = cluster
@@ -56,12 +74,53 @@ export async function clusterArchetypes(format: string, windowDays = DEFAULT_WIN
 
     if (bestCluster && bestScore >= JACCARD_THRESHOLD) {
       bestCluster.decks.push(deck)
+      // Invalidate cached centroid — recompute lazily on next use
+      centroidCache.set(bestCluster, computeCentroid(bestCluster))
     } else {
-      clusters.push({ representative: deck, decks: [deck] })
+      const newCluster: Cluster = { decks: [deck] }
+      clusters.push(newCluster)
+      centroidCache.set(newCluster, deck.cardSet)  // single-deck centroid = its own cards
     }
   }
 
-  console.log(`[cluster] ${format}: ${clusters.length} clusters (${clusters.filter(c => c.decks.length >= MIN_CLUSTER_SIZE).length} large enough to label)`)
+  // Option A: iterative refinement — recompute centroids and reassign until stable
+  let iters = 0
+  for (; iters < MAX_REFINEMENT_ITERS; iters++) {
+    const centroids = clusters.map(computeCentroid)
+
+    // Assign each deck to its best-scoring centroid (or nowhere if below threshold)
+    const newMembers: DeckRecord[][] = clusters.map(() => [])
+    let orphaned = 0
+    for (const deck of decks) {
+      let bestIdx = -1
+      let bestScore = 0
+      for (let i = 0; i < clusters.length; i++) {
+        const score = jaccard(deck.cardSet, centroids[i])
+        if (score > bestScore) { bestScore = score; bestIdx = i }
+      }
+      if (bestIdx >= 0 && bestScore >= JACCARD_THRESHOLD) {
+        newMembers[bestIdx].push(deck)
+      } else {
+        orphaned++
+      }
+    }
+    if (orphaned > 0) console.log(`[cluster] ${format}: iter ${iters} — ${orphaned} decks orphaned (below threshold against all centroids)`)
+
+    // Check for convergence
+    const changed = clusters.some((c, i) => {
+      const oldIds = new Set(c.decks.map(d => d.id))
+      const newIds = new Set(newMembers[i].map(d => d.id))
+      return oldIds.size !== newIds.size || [...oldIds].some(id => !newIds.has(id))
+    })
+
+    for (let i = 0; i < clusters.length; i++) clusters[i].decks = newMembers[i]
+    if (!changed) break
+  }
+
+  // Drop clusters that became empty or too small after refinement
+  const viable = clusters.filter(c => c.decks.length >= MIN_CLUSTER_SIZE)
+
+  console.log(`[cluster] ${format}: ${viable.length} clusters after ${iters} refinement iterations`)
 
   // Clear stale jaccard assignments for decks in this window before writing fresh ones
   const deckIds = decks.map(d => d.id)
@@ -71,9 +130,7 @@ export async function clusterArchetypes(format: string, windowDays = DEFAULT_WIN
     .in('deck_id', deckIds)
     .eq('method', 'jaccard')
 
-  for (const cluster of clusters) {
-    if (cluster.decks.length < MIN_CLUSTER_SIZE) continue
-
+  for (const cluster of viable) {
     const archetypeId = await labelAndUpsertArchetype(cluster, format)
     if (!archetypeId) continue
 
@@ -95,9 +152,25 @@ export async function clusterArchetypes(format: string, windowDays = DEFAULT_WIN
 }
 
 function jaccard(a: Set<string>, b: Set<string>): number {
+  if (a.size === 0 && b.size === 0) return 1
+  if (a.size === 0 || b.size === 0) return 0
   let intersection = 0
   for (const card of a) if (b.has(card)) intersection++
   return intersection / (a.size + b.size - intersection)
+}
+
+// Centroid: cards appearing in ≥50% of cluster members
+function computeCentroid(cluster: Cluster): Set<string> {
+  const counts = new Map<string, number>()
+  for (const deck of cluster.decks) {
+    for (const card of deck.cardSet) counts.set(card, (counts.get(card) ?? 0) + 1)
+  }
+  const minCount = cluster.decks.length * CENTROID_MIN_FREQ
+  const centroid = new Set<string>()
+  for (const [card, count] of counts) {
+    if (count >= minCount) centroid.add(card)
+  }
+  return centroid
 }
 
 function avgJaccard(deck: DeckRecord, cluster: Cluster): number {
@@ -110,9 +183,7 @@ function avgJaccard(deck: DeckRecord, cluster: Cluster): number {
 function clusterCardFrequency(cluster: Cluster): { name: string; freq: number }[] {
   const counts = new Map<string, number>()
   for (const deck of cluster.decks) {
-    for (const card of deck.cardSet) {
-      counts.set(card, (counts.get(card) ?? 0) + 1)
-    }
+    for (const card of deck.cardSet) counts.set(card, (counts.get(card) ?? 0) + 1)
   }
   return [...counts.entries()]
     .map(([name, count]) => ({ name, freq: count / cluster.decks.length }))
@@ -144,7 +215,6 @@ async function labelAndUpsertArchetype(cluster: Cluster, format: string): Promis
     .maybeSingle()
 
   if (existing?.is_overridden) {
-    // Archetype exists and is admin-managed — only update key_cards if empty
     const { error } = await supabase
       .from('archetypes')
       .update({ key_cards: keyCards, updated_at: new Date().toISOString() })
