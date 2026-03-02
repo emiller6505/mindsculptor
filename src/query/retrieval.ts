@@ -96,12 +96,14 @@ async function resolveConfidence(
   return 'LOW'
 }
 
+type RawDeck = Omit<DeckSummary, 'deck_cost_usd' | 'deck_cost_tix'>
+
 async function fetchTopDecks(
   format: string | null,
   cutoff: string,
   archetype: string | null,
   archetype_b: string | null,
-): Promise<DeckSummary[]> {
+): Promise<RawDeck[]> {
   const archetypeHints = [archetype, archetype_b].filter(Boolean) as string[]
 
   // If archetypes are mentioned, try to resolve them to IDs via vector search first.
@@ -166,7 +168,7 @@ async function fetchTopDecks(
   return decks
 }
 
-async function attachDeckCosts(decks: Omit<DeckSummary, 'deck_cost_usd' | 'deck_cost_tix'>[]): Promise<DeckSummary[]> {
+async function attachDeckCosts(decks: RawDeck[]): Promise<DeckSummary[]> {
   if (decks.length === 0) return decks.map(d => ({ ...d, deck_cost_usd: null, deck_cost_tix: null }))
 
   const allNames = [...new Set(decks.flatMap(d => d.mainboard.map(c => c.name)))]
@@ -191,7 +193,7 @@ async function attachDeckCosts(decks: Omit<DeckSummary, 'deck_cost_usd' | 'deck_
   })
 }
 
-function filterByArchetypeHint(decks: DeckSummary[], archetypes: string[]): DeckSummary[] {
+function filterByArchetypeHint(decks: RawDeck[], archetypes: string[]): RawDeck[] {
   const keywords = archetypes.flatMap(a => a.toLowerCase().split(/\s+/))
   return decks.filter(d =>
     d.mainboard.some(c =>
