@@ -1,0 +1,39 @@
+{
+  "name": "mindsculptor",
+  "version": "1.0.0",
+  "description": "A magic oracle",
+  "type": "module",
+  "scripts": {
+    "sync:scryfall": "tsx src/scripts/sync-scryfall.ts",
+    "scrape": "tsx src/workers/scrape.ts",
+    "parse": "tsx src/scripts/run-parser.ts",
+    "query": "tsx src/scripts/test-query.ts",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/emiller6505/mindsculptor.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/emiller6505/mindsculptor/issues"
+  },
+  "homepage": "https://github.com/emiller6505/mindsculptor#readme",
+  "devDependencies": {
+    "@types/node": "^25.3.3",
+    "@types/stream-json": "^1.7.8",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.18"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.78.0",
+    "@supabase/supabase-js": "^2.98.0",
+    "dotenv": "^17.3.1",
+    "playwright": "^1.58.2",
+    "stream-json": "^1.9.1"
+  }
+}

@@ -2,3 +2,13 @@
 # Dolt database files (added by bd init)
 .dolt/
 *.db
+
+# Environment
+.env
+.env.local
+
+# Dependencies
+node_modules/
+
+# Build output
+dist/

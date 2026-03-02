@@ -28,8 +28,11 @@ ephemeral.sqlite3-shm
 
 # Dolt server management (auto-started by bd)
 dolt-server.pid
+dolt-server.port
 dolt-server.log
 dolt-server.lock
+dolt-server.activity
+dolt-monitor.pid
 
 # Legacy files (from pre-Dolt versions)
 *.db

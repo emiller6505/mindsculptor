@@ -1,0 +1,16 @@
+# Product Planning
+
+This directory tracks product decisions for MindSculptor — an MTG metagame oracle.
+
+## Files
+
+- `design.md` — visual identity, color palette, typography, vibe
+- `tiers.md` — business model, feature gating, pricing rationale
+- `information-architecture.md` — page structure, navigation, user flows
+- `alerts.md` — MTGO alert and digest system design
+
+## Core Concept
+
+A metagame oracle for competitive MTG players. Scrapes tournament results, synthesizes with LLM, tells you what's winning and why. Primary audience: RCQ grinders. Secondary: ladder climbers.
+
+The moat is the synthesis layer — MTGGoldfish shows numbers, this app explains what they mean.

@@ -1,0 +1,50 @@
+services:
+  # ── Web service (Next.js — frontend + query API) ──────────────────────────
+  - type: web
+    name: mindsculptor-web
+    runtime: node
+    plan: starter
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+
+  # ── Cron jobs ─────────────────────────────────────────────────────────────
+  - type: cron
+    name: scrape-mtgo
+    runtime: node
+    plan: starter
+    schedule: "0 */12 * * *"     # every 12 hours
+    buildCommand: npm install
+    startCommand: npm run scrape
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+
+  - type: cron
+    name: sync-scryfall
+    runtime: node
+    plan: starter
+    schedule: "0 3 * * 1"         # every Monday at 3am UTC
+    buildCommand: npm install
+    startCommand: npm run sync:scryfall
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
