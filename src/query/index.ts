@@ -2,7 +2,7 @@ import { llm } from '../lib/llm'
 import { extractIntent } from './intent'
 import { retrieveContext } from './retrieval'
 import { assembleContext, buildResponseSystem } from './assemble'
-import { cacheGet, cacheSet } from '../lib/query-cache.js'
+import { cacheGet, cacheSet } from '../lib/query-cache'
 import type { Intent } from './intent'
 import type { RetrievedData } from './retrieval'
 
