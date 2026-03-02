@@ -34,7 +34,9 @@ export async function extractIntent(query: string): Promise<Intent> {
   const raw = await llm.complete(SYSTEM, query, { maxTokens: 256, temperature: 0 })
   try {
     const cleaned = raw.trim().replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '')
-    return JSON.parse(cleaned) as Intent
+    const parsed = JSON.parse(cleaned)
+    if (!parsed || typeof parsed !== 'object') throw new Error('not an object')
+    return parsed as Intent
   } catch {
     throw new Error(`Intent parse failed. Raw response: ${raw}`)
   }
