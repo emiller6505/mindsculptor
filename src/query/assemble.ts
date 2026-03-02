@@ -29,7 +29,11 @@ export function assembleContext(intent: Intent, data: RetrievedData): string {
 }
 
 function formatDeck(deck: DeckSummary): string {
-  const header = `\n[${deck.tournament_name} ${deck.tournament_date} | Place: ${deck.placement ?? '?'} | Pilot: ${deck.pilot}]`
+  const costParts: string[] = []
+  if (deck.deck_cost_usd != null) costParts.push(`$${deck.deck_cost_usd.toFixed(2)} paper`)
+  if (deck.deck_cost_tix != null) costParts.push(`${deck.deck_cost_tix.toFixed(1)} tix`)
+  const costStr = costParts.length > 0 ? ` | Cost: ~${costParts.join(' / ')}` : ''
+  const header = `\n[${deck.tournament_name} ${deck.tournament_date} | Place: ${deck.placement ?? '?'} | Pilot: ${deck.pilot}${costStr}]`
   const main = deck.mainboard.map(c => `${c.qty}x ${c.name}`).join(', ')
   const side = deck.sideboard.length > 0
     ? `\n  Sideboard: ${deck.sideboard.map(c => `${c.qty}x ${c.name}`).join(', ')}`
@@ -57,4 +61,5 @@ Guidelines:
     \`\`\`
 - If the data is sparse or the question is outside the available data window, say so explicitly.
 - Do not fabricate cards, placements, or results.
-- Do not use emojis.`
+- Do not use emojis.
+- When the user asks about budget, affordability, or cheapest options: rank decks by deck_cost_usd (paper) or deck_cost_tix (MTGO), whichever is relevant. If cost data is unavailable (null), note that prices weren't available.`

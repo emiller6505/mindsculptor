@@ -29,6 +29,8 @@ export interface DeckSummary {
   tier: string | null
   mainboard: { name: string; qty: number }[]
   sideboard: { name: string; qty: number }[]
+  deck_cost_usd: number | null
+  deck_cost_tix: number | null
 }
 
 export interface CardInfo {
@@ -53,13 +55,16 @@ export async function retrieveContext(intent: Intent): Promise<RetrievedData> {
   const window_days = intent.timeframe_days
   const cutoff = new Date(Date.now() - window_days * 86_400_000).toISOString().split('T')[0]
 
-  const [topDecks, cardInfo] = await Promise.all([
+  const [rawDecks, cardInfo] = await Promise.all([
     fetchTopDecks(intent.format, cutoff, intent.archetype, intent.archetype_b),
     intent.card ? fetchCardInfo(intent.card, intent.format, cutoff) : Promise.resolve(null),
   ])
 
-  const tournaments_count = new Set(topDecks.map(d => d.tournament_name)).size
-  const confidence = await resolveConfidence(intent.format, cutoff, topDecks.length)
+  const tournaments_count = new Set(rawDecks.map(d => d.tournament_name)).size
+  const [topDecks, confidence] = await Promise.all([
+    attachDeckCosts(rawDecks),
+    resolveConfidence(intent.format, cutoff, rawDecks.length),
+  ])
 
   return { format: intent.format, window_days, tournaments_count, top_decks: topDecks, card_info: cardInfo, confidence }
 }
@@ -159,6 +164,31 @@ async function fetchTopDecks(
   }
 
   return decks
+}
+
+async function attachDeckCosts(decks: Omit<DeckSummary, 'deck_cost_usd' | 'deck_cost_tix'>[]): Promise<DeckSummary[]> {
+  if (decks.length === 0) return decks.map(d => ({ ...d, deck_cost_usd: null, deck_cost_tix: null }))
+
+  const allNames = [...new Set(decks.flatMap(d => d.mainboard.map(c => c.name)))]
+  const { data } = await supabase
+    .from('cards')
+    .select('name, usd, tix')
+    .in('name', allNames)
+
+  const priceMap = new Map<string, { usd: number | null; tix: number | null }>()
+  for (const row of data ?? []) {
+    priceMap.set(row.name, { usd: row.usd ?? null, tix: row.tix ?? null })
+  }
+
+  return decks.map(d => {
+    let usdTotal = 0, tixTotal = 0, hasUsd = false, hasTix = false
+    for (const card of d.mainboard) {
+      const p = priceMap.get(card.name)
+      if (p?.usd != null) { usdTotal += card.qty * p.usd; hasUsd = true }
+      if (p?.tix != null) { tixTotal += card.qty * p.tix; hasTix = true }
+    }
+    return { ...d, deck_cost_usd: hasUsd ? Math.round(usdTotal * 100) / 100 : null, deck_cost_tix: hasTix ? Math.round(tixTotal * 100) / 100 : null }
+  })
 }
 
 function filterByArchetypeHint(decks: DeckSummary[], archetypes: string[]): DeckSummary[] {

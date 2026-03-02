@@ -38,6 +38,7 @@ interface ScryfallCard {
   rarity: string
   image_uris?: { normal?: string }
   card_faces?: Array<{ image_uris?: { normal?: string }; oracle_text?: string }>
+  prices?: { usd?: string | null; tix?: string | null }
 }
 
 async function getBulkDownloadUrl(): Promise<string> {
@@ -69,6 +70,8 @@ function toCardRow(c: ScryfallCard) {
     collector_number: c.collector_number,
     rarity: c.rarity,
     image_uri: imageUri,
+    usd: c.prices?.usd ? parseFloat(c.prices.usd) : null,
+    tix: c.prices?.tix ? parseFloat(c.prices.tix) : null,
     updated_at: new Date().toISOString(),
   }
 }

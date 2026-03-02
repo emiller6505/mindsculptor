@@ -53,14 +53,15 @@ describe('retrieveContext', () => {
   it('includes card_info when intent has a card', async () => {
     // Call order: from('decks'), from('cards'), from('tournaments'), from('decks'), from('deck_cards'), from('metagame_snapshots')
     vi.mocked(supabase.from)
-      .mockImplementationOnce(() => makeChainable({ data: [DECK_FIXTURE], error: null }))  // fetchTopDecks
-      .mockImplementationOnce(() => makeChainable(                                          // fetchCardInfo: cards
+      .mockImplementationOnce(() => makeChainable({ data: [DECK_FIXTURE], error: null }))  // fetchTopDecks: decks
+      .mockImplementationOnce(() => makeChainable(                                          // fetchCardInfo: cards (starts concurrently)
         { data: [], error: null },
         { data: CARD_FIXTURE, error: null },
       ))
-      .mockImplementationOnce(() => makeChainable({ data: [{ id: 'tourney-1' }], error: null }))  // tournaments
-      .mockImplementationOnce(() => makeChainable({ data: [{ id: 'deck-1' }], error: null }))     // decks (id only)
-      .mockImplementationOnce(() => makeChainable({ data: [], error: null, count: 17 }))           // deck_cards count
+      .mockImplementationOnce(() => makeChainable({ data: [{ id: 'tourney-1' }], error: null }))  // fetchCardInfo: tournaments
+      .mockImplementationOnce(() => makeChainable({ data: [{ id: 'deck-1' }], error: null }))     // fetchCardInfo: decks (id only)
+      .mockImplementationOnce(() => makeChainable({ data: [], error: null, count: 17 }))           // fetchCardInfo: deck_cards count
+      .mockImplementationOnce(() => makeChainable({ data: [], error: null }))                      // attachDeckCosts: cards prices (sequential after Promise.all)
       .mockImplementationOnce(() => makeChainable({ data: null, error: null }))                    // metagame_snapshots (resolveConfidence)
 
     const intent = { ...INTENT_FIXTURE, question_type: 'card_question' as const, card: 'Lightning Bolt' }

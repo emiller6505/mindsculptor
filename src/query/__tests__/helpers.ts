@@ -50,6 +50,8 @@ export const DECK_SUMMARY_FIXTURE = {
     { name: 'Goblin Guide', qty: 4 },
   ],
   sideboard: [{ name: 'Leyline of Sanctity', qty: 2 }],
+  deck_cost_usd: null,
+  deck_cost_tix: null,
 }
 
 export const CARD_FIXTURE = {
