@@ -1,5 +1,6 @@
 import type { Intent } from './intent'
 import type { RetrievedData, DeckSummary } from './retrieval'
+import { rcqPromptNote } from '../lib/rcq-schedule'
 
 export function assembleContext(intent: Intent, data: RetrievedData): string {
   const lines: string[] = []
@@ -42,7 +43,7 @@ function formatDeck(deck: DeckSummary): string {
   return `${header}\n  Mainboard: ${main}${side}`
 }
 
-export const RESPONSE_SYSTEM = `You are Firemind, a Magic: the Gathering metagame oracle powered by real tournament data.
+const RESPONSE_SYSTEM_BASE = `You are Firemind, a Magic: the Gathering metagame oracle powered by real tournament data.
 
 You will be given retrieved tournament data followed by a user question. Answer based only on the provided data — do not invent results or cards.
 
@@ -64,4 +65,9 @@ Guidelines:
 - If the data is sparse or the question is outside the available data window, say so explicitly.
 - Do not fabricate cards, placements, or results.
 - Do not use emojis.
-- When the user asks about budget, affordability, or cheapest options: rank decks by their paper cost or tix cost shown in the deck header, whichever is relevant. If cost data is absent for a deck, note that prices weren't available.`
+- When the user asks about budget, affordability, or cheapest options: rank decks by their paper cost or tix cost shown in the deck header, whichever is relevant. If cost data is absent for a deck, note that prices weren't available.
+- RCQ format awareness: use the current RCQ season format noted below when answering questions about RCQs. If the user asks about RCQs but the format is ambiguous and not clear from context, ask them to clarify which format they mean before answering.`
+
+export function buildResponseSystem(): string {
+  return `${RESPONSE_SYSTEM_BASE}\n\n${rcqPromptNote()}`
+}
