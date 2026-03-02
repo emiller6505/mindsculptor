@@ -3,6 +3,9 @@
 .dolt/
 *.db
 
+# Beads runtime files
+.beads/dolt-server.port
+
 # Environment
 .env
 .env.local
