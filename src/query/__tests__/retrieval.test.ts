@@ -51,7 +51,7 @@ describe('retrieveContext', () => {
   })
 
   it('includes card_info when intent has a card', async () => {
-    // Call order: from('decks'), from('cards'), from('tournaments'), from('decks'), from('deck_cards')
+    // Call order: from('decks'), from('cards'), from('tournaments'), from('decks'), from('deck_cards'), from('metagame_snapshots')
     vi.mocked(supabase.from)
       .mockImplementationOnce(() => makeChainable({ data: [DECK_FIXTURE], error: null }))  // fetchTopDecks
       .mockImplementationOnce(() => makeChainable(                                          // fetchCardInfo: cards
@@ -61,6 +61,7 @@ describe('retrieveContext', () => {
       .mockImplementationOnce(() => makeChainable({ data: [{ id: 'tourney-1' }], error: null }))  // tournaments
       .mockImplementationOnce(() => makeChainable({ data: [{ id: 'deck-1' }], error: null }))     // decks (id only)
       .mockImplementationOnce(() => makeChainable({ data: [], error: null, count: 17 }))           // deck_cards count
+      .mockImplementationOnce(() => makeChainable({ data: null, error: null }))                    // metagame_snapshots (resolveConfidence)
 
     const intent = { ...INTENT_FIXTURE, question_type: 'card_question' as const, card: 'Lightning Bolt' }
     const result = await retrieveContext(intent)

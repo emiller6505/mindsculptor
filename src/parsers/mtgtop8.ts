@@ -109,9 +109,11 @@ export function extractStandings(html: string): StandingRow[] {
     const before = html.slice(Math.max(0, m.index - 600), m.index)
     const after = html.slice(m.index, m.index + 400)
 
-    // Placement: look for a rank number in the surrounding context
-    const rankMatch = before.match(/\b([1-9]\d?)\b\s*$/) ?? after.match(/\b([1-9]\d?)\b/)
-    const placement = rankMatch ? parseInt(rankMatch[1], 10) : standings.length + 1
+    // Placement: look for a small integer inside a <td> in the rows before the deck link.
+    // Use the last <td>…</td> that contains only a number to avoid matching years/set numbers.
+    const placementMatch = before.match(/<td[^>]*>\s*([1-9]\d?)\s*<\/td>(?![\s\S]*<td[^>]*>\s*[1-9]\d?\s*<\/td>)/)
+      ?? before.match(/<td[^>]*>\s*([1-9]\d?)\s*<\/td>/)
+    const placement = placementMatch ? parseInt(placementMatch[1], 10) : standings.length + 1
 
     if (placement > MAX_DECK_FETCH) continue
 

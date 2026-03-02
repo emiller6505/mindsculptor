@@ -7,10 +7,11 @@ type PgResult = { data: unknown; error: { message: string } | null; count?: numb
 export function makeChainable(chainResult: PgResult, singleResult?: PgResult): ReturnType<typeof Object.create> {
   const chain: Record<string, unknown> = {
     single: () => Promise.resolve(singleResult ?? chainResult),
+    maybeSingle: () => Promise.resolve(singleResult ?? chainResult),
     then: (resolve: (v: PgResult) => unknown, reject?: (e: unknown) => unknown) =>
       Promise.resolve(chainResult).then(resolve, reject),
   }
-  for (const m of ['select', 'gte', 'lte', 'eq', 'not', 'order', 'limit', 'in', 'ilike']) {
+  for (const m of ['select', 'gte', 'lte', 'eq', 'not', 'order', 'limit', 'in', 'ilike', 'delete']) {
     chain[m] = () => chain
   }
   return chain

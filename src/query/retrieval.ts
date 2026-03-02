@@ -46,6 +46,7 @@ export interface RetrievedData {
   tournaments_count: number
   top_decks: DeckSummary[]
   card_info: CardInfo | null
+  confidence: 'LOW' | 'MEDIUM' | 'HIGH' | 'VERY HIGH'
 }
 
 export async function retrieveContext(intent: Intent): Promise<RetrievedData> {
@@ -58,8 +59,36 @@ export async function retrieveContext(intent: Intent): Promise<RetrievedData> {
   ])
 
   const tournaments_count = new Set(topDecks.map(d => d.tournament_name)).size
+  const confidence = await resolveConfidence(intent.format, cutoff, topDecks.length)
 
-  return { format: intent.format, window_days, tournaments_count, top_decks: topDecks, card_info: cardInfo }
+  return { format: intent.format, window_days, tournaments_count, top_decks: topDecks, card_info: cardInfo, confidence }
+}
+
+// Pull the best confidence from metagame_snapshots for this format/window.
+// Falls back to a count-based label if snapshots haven't been computed yet.
+async function resolveConfidence(
+  format: string | null,
+  cutoff: string,
+  deckCount: number,
+): Promise<'LOW' | 'MEDIUM' | 'HIGH' | 'VERY HIGH'> {
+  if (format) {
+    const { data } = await supabase
+      .from('metagame_snapshots')
+      .select('confidence, sample_size')
+      .eq('format', format)
+      .gte('window_start', cutoff)
+      .order('sample_size', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    if (data?.confidence) return data.confidence as 'LOW' | 'MEDIUM' | 'HIGH' | 'VERY HIGH'
+  }
+
+  // Fallback when snapshots not yet available
+  if (deckCount >= 20) return 'VERY HIGH'
+  if (deckCount >= 10) return 'HIGH'
+  if (deckCount >= 5) return 'MEDIUM'
+  return 'LOW'
 }
 
 async function fetchTopDecks(

@@ -5,7 +5,7 @@ export function assembleContext(intent: Intent, data: RetrievedData): string {
   const lines: string[] = []
 
   lines.push(`=== Metagame Data ===`)
-  lines.push(`Format: ${data.format ?? 'unspecified'} | Window: last ${data.window_days} days | Tournaments: ${data.tournaments_count} | Decks analyzed: ${data.top_decks.length}`)
+  lines.push(`Format: ${data.format ?? 'unspecified'} | Window: last ${data.window_days} days | Tournaments: ${data.tournaments_count} | Decks analyzed: ${data.top_decks.length} | Data confidence: ${data.confidence}`)
 
   if (data.card_info) {
     const c = data.card_info
@@ -43,7 +43,9 @@ You will be given retrieved tournament data followed by a user question. Answer 
 
 Guidelines:
 - Be specific and actionable. Reference actual deck results, pilots, and placements from the data.
-- State your confidence: VERY HIGH (20+ data points), HIGH (10-19), MEDIUM (5-9), LOW (<5).
+- State your confidence level explicitly (it is provided in the context header as "Data confidence").
+- For LOW confidence, preface your answer with a clear caveat: "Note: limited data — treat this as a directional signal, not a definitive answer."
+- For MEDIUM confidence, include a brief note that results may not be fully representative.
 - For deck advice, recommend the highest-placing proven list and explain why.
 - When asked for a deck list, output it in MTGA copy format inside a markdown code block:
     \`\`\`

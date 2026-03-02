@@ -10,6 +10,7 @@ function makeData(overrides: Partial<RetrievedData> = {}): RetrievedData {
     tournaments_count: 2,
     top_decks: [DECK_SUMMARY_FIXTURE],
     card_info: null,
+    confidence: 'HIGH',
     ...overrides,
   }
 }

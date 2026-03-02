@@ -16,16 +16,22 @@ export async function embedArchetypes(format?: string): Promise<void> {
     return
   }
 
-  // Only embed archetypes that don't already have an up-to-date embedding
+  // Skip archetypes whose embedding is newer than their last update.
+  // Re-embed anything that was updated after its embedding was created.
   const { data: existing } = await supabase
     .from('embeddings')
-    .select('entity_id')
+    .select('entity_id, created_at')
     .eq('entity_type', 'archetype')
     .eq('model', MODEL)
     .in('entity_id', data.map(a => a.id))
 
-  const alreadyEmbedded = new Set((existing ?? []).map(e => e.entity_id))
-  const toEmbed = data.filter(a => !alreadyEmbedded.has(a.id))
+  const embeddedAt = new Map((existing ?? []).map(e => [e.entity_id, e.created_at as string]))
+  const toEmbed = data.filter(a => {
+    const embTime = embeddedAt.get(a.id)
+    if (!embTime) return true  // not yet embedded
+    // Re-embed if archetype was updated after embedding was created
+    return (a as unknown as { updated_at: string }).updated_at > embTime
+  })
 
   if (toEmbed.length === 0) {
     console.log('[embed] All archetypes already embedded')

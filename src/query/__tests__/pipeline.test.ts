@@ -16,6 +16,7 @@ const RETRIEVED_DATA = {
   tournaments_count: 2,
   top_decks: [DECK_SUMMARY_FIXTURE],
   card_info: null,
+  confidence: 'HIGH' as const,
 }
 
 beforeEach(() => {

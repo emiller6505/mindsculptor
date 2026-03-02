@@ -48,10 +48,19 @@ const mdComponents: Components = {
   },
 }
 
+type Confidence = 'LOW' | 'MEDIUM' | 'HIGH' | 'VERY HIGH'
+
+const CONFIDENCE_COLORS: Record<Confidence, string> = {
+  'VERY HIGH': 'text-emerald-500',
+  'HIGH':      'text-blue-400',
+  'MEDIUM':    'text-yellow-500',
+  'LOW':       'text-red-400',
+}
+
 interface Message {
   role: 'user' | 'oracle'
   content: string
-  meta?: { format: string | null; window_days: number; decks_analyzed: number }
+  meta?: { format: string | null; window_days: number; decks_analyzed: number; confidence?: Confidence }
 }
 
 export default function Home() {
@@ -89,6 +98,7 @@ export default function Home() {
           format: data.intent?.format,
           window_days: data.data?.window_days,
           decks_analyzed: data.data?.top_decks?.length ?? 0,
+          confidence: data.data?.confidence,
         },
       }])
     } catch (err) {
@@ -143,6 +153,11 @@ export default function Home() {
                       msg.meta.window_days && `last ${msg.meta.window_days}d`,
                       msg.meta.decks_analyzed && `${msg.meta.decks_analyzed} decks`,
                     ].filter(Boolean).join(' · ')}
+                    {msg.meta.confidence && (
+                      <span className={`ml-2 font-medium ${CONFIDENCE_COLORS[msg.meta.confidence]}`}>
+                        {msg.meta.confidence}
+                      </span>
+                    )}
                   </p>
                 )}
               </div>
