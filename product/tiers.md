@@ -9,23 +9,24 @@ The goal: high conversion through genuine value, not friction.
 
 ### Casual (Free)
 
-- Standard + Modern, full metagame view
+- Full metagame charts: deck breakdown, meta share, win rate, trends — Standard + Modern
+- Archetype detail pages: play rates, win rates, recent results — all free
 - 12-hour fresh data
-- Macro trends: archetype share, format snapshot, tier list
-- Oracle: 10 queries/day
-- Chat history: 1 week (older history exists in DB but is paywalled — visible as locked entries)
-- Alerts: 1 archetype subscription
+- Oracle: 5 queries/day
+- No chat history (ephemeral if logged out; logged-in Casual gets no persistent history)
+- Alerts: 1 archetype subscription (in-app only, no email)
 - No credit card required, ever
 
 ### Spike ($4.99/month)
 
 - Everything in Casual
-- Deep archetype granularity: full matchup matrix, event-by-event drill-down, list-level breakdown
 - Oracle: 30 queries/day
-- Chat history: unlimited (full history, no time gate)
-- Unlimited archetype subscriptions
-- MTGO alert emails: "Titan just won the Showcase Challenge in Dallas — here's the list and the meta context"
-- Weekly meta digest email
+- Chat history: unlimited (full history, searchable, resumable)
+- Deck list generation: oracle generates a recommended 75 for any archetype
+- Archetype-specific oracle CTAs: "What should I sideboard against this?" etc.
+- Unlimited archetype alert subscriptions
+- MTGO alert emails: "Titan just won the Showcase Challenge — here's the list and the meta context"
+- Weekly meta digest email per format
 - Early access to new formats (Legacy, cEDH when added)
 - Annual billing option at ~20% discount
 

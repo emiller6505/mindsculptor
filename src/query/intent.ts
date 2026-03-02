@@ -1,4 +1,4 @@
-import { llm } from '../lib/llm.js'
+import { llm } from '../lib/llm'
 
 export interface Intent {
   format: 'modern' | 'standard' | null

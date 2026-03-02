@@ -1,9 +1,9 @@
-import { llm } from '../lib/llm.js'
-import { extractIntent } from './intent.js'
-import { retrieveContext } from './retrieval.js'
-import { assembleContext, RESPONSE_SYSTEM } from './assemble.js'
-import type { Intent } from './intent.js'
-import type { RetrievedData } from './retrieval.js'
+import { llm } from '../lib/llm'
+import { extractIntent } from './intent'
+import { retrieveContext } from './retrieval'
+import { assembleContext, RESPONSE_SYSTEM } from './assemble'
+import type { Intent } from './intent'
+import type { RetrievedData } from './retrieval'
 
 export interface QueryResponse {
   answer: string

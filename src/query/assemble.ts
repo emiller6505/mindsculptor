@@ -1,5 +1,5 @@
-import type { Intent } from './intent.js'
-import type { RetrievedData, DeckSummary } from './retrieval.js'
+import type { Intent } from './intent'
+import type { RetrievedData, DeckSummary } from './retrieval'
 
 export function assembleContext(intent: Intent, data: RetrievedData): string {
   const lines: string[] = []
@@ -52,4 +52,5 @@ Guidelines:
     Sideboard:
     2 Leyline of Sanctity
 - If the data is sparse or the question is outside the available data window, say so explicitly.
-- Do not fabricate cards, placements, or results.`
+- Do not fabricate cards, placements, or results.
+- Do not use emojis.`

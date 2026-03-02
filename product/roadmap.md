@@ -13,10 +13,9 @@ The core product. Chat-first interface backed by a live metagame data pipeline a
 **Includes:**
 - Scraping pipeline: MTGO decklists, MTGGoldfish, MTGTop8 — 12hr cadence
 - RAG pipeline + Claude LLM synthesis
-- Full-width chat UI: format toggle, suggested prompts, query counter
-- Inline data cards in oracle responses (archetype bars, trend arrows, tappable names)
-- Archetype detail drawer (basic Casual view: tier, description, representative list)
-- Query limits enforced: 10/day Casual, 30/day Spike
+- Full-width chat UI: suggested prompts, inline query counter
+- Inline data cards in oracle responses (archetype bars, trend arrows, tappable links to metagame pages)
+- Query limits enforced: 5/day Casual, 30/day Spike
 
 ---
 
@@ -33,24 +32,31 @@ Without this, you can't monetize and can't gate features. Needs to ship with the
 
 ---
 
-### 3. Public Metagame Pages
+### 3. Metagame Charts Section
 
-SEO and Reddit are primary acquisition channels. Without public, crawlable pages,
-the product is invisible. This is day-one infrastructure, not a nice-to-have.
+The free half of the product. SEO flywheel, acquisition surface, and conversion funnel
+into the oracle. All charts are public, SSR, no auth required.
 
 **Includes:**
-- `/formats/[format]` — public, SSR, fully crawlable with real metagame data
-- `/archetypes/[slug]` — public, SSR, archetype detail with cached oracle summary
+- `/metagame/[format]` — format overview: archetype breakdown chart, filterable by time
+  range (7d / 30d / 90d), sortable by meta share or win rate
+- `/metagame/[format]/[archetype]` — archetype detail: trend charts, win rate over time,
+  recent MTGO results, and oracle CTA cluster
+- Oracle CTAs on every archetype page: free "Ask the Firemind" + Spike-only
+  "Generate deck list" and "Sideboard plan vs the field"
 - `/oracle/results/[id]` — shareable single-response permalinks for Reddit/social
 - Dynamic OG images via `@vercel/og` (archetype name, meta %, trend arrow)
-- Sitemap generation
-- All hero text in real HTML, not client-rendered
+- Sitemap covering all metagame pages
+- All content in real HTML — indexable by Google
 
 ---
 
 ## Post-MVP — ranked priorities
 
-### Tier 1 — ship within first month or two
+Features ship one at a time as they're ready — no big v2 release. Each item below is
+self-contained and can go out independently. Order reflects priority, not batching.
+
+### Tier 1 — first out the door
 
 **Alert emails + weekly digest**
 The stickiness engine. Brings Spike subscribers back every week without them having
@@ -59,14 +65,9 @@ a Sunday morning meta digest per format. Reuses the oracle synthesis pipeline.
 See `alerts.md` for full spec.
 
 **Chat history**
-Casual: 1 week (older entries visible but locked). Spike: unlimited.
-History drawer (🕐 icon) with search. Locked entries tease the query and date.
-This is both a Spike differentiator and a long-term retention mechanic —
-users accumulate a research trail they don't want to lose.
-
-**Full Spike archetype depth**
-Complete the Spike value prop: matchup matrix, event-by-event results, list variants,
-pilot names. The MVP archetype drawer shows Casual content; this unlocks the full view.
+Spike: unlimited, searchable, resumable. History drawer (🕐) in nav.
+Casual users see the icon but hit an upgrade prompt.
+Long-term retention mechanic — users accumulate a research trail they don't want to lose.
 
 ---
 

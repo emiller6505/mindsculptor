@@ -5,167 +5,231 @@
 Primary channels: Reddit, Meta ads (Facebook/Instagram), SEO. Podcasts post-MVP.
 
 **Engineering implications:**
-- `/formats/[format]` and `/archetypes/[slug]` must be **public and SSR** — not auth-gated. Google needs to crawl them with real data.
-- Dynamic OG images per archetype (via `@vercel/og`) — shows meta %, trend arrow, archetype name. Matters for Reddit shares and Meta ad previews.
-- Shareable oracle result permalinks — key Reddit/social virality mechanic.
-- `/reports/[format]-[date]` pages (see below) — weekly digest published publicly doubles as indexed SEO content.
-- Sitemap generation required from day one.
-- Cold Meta ad traffic needs a 3-second value prop: *"Know what's winning before you register."*
+- Metagame section (`/metagame/**`) must be **public and SSR** — fully crawlable, no auth required
+- Oracle section (`/oracle`) requires auth to use but landing at `/` is public
+- Dynamic OG images via `@vercel/og` on archetype and format pages
+- Shareable oracle result permalinks for Reddit/social virality
+- `/reports/[format]-[date]` — weekly digest as public indexed pages
+- Sitemap covers all metagame pages
+- Cold Meta ad traffic hero: *"Know what's winning before you register."*
 
-## Chat history model
+---
 
-| State | History |
-|---|---|
-| Not logged in | Ephemeral — lost on tab close. No DB storage. |
-| Casual (free) | 1 week stored. Older entries exist in DB but render as locked/blurred with upgrade prompt. |
-| Spike | Unlimited. Full history always accessible. |
+## Two sections
 
-The locked older history creates a natural upgrade hook: Casual users who've been around for a while accumulate a visible trail of past research they can't quite reach.
+### 1. Oracle (`/oracle`)
+Chat-first AI analysis. The core product and the primary paywall surface.
+Format is conversational context here, not a persistent filter.
 
-**History access in the no-sidebar UI:** A `[🕐]` history icon sits in the top bar alongside 🔔 and 📅. Clicking it opens a history drawer — list of past conversations, searchable, with locked entries shown greyed below the 1-week cutoff for Casual users.
+### 2. Metagame (`/metagame`)
+Data visualization: charts, trends, archetype breakdowns. Fully free.
+CTAs throughout funnel users into the oracle.
 
-## UI model: chat-first, drawer-based
+---
 
-The oracle is the app. Everything else is a drawer or overlay over the chat. No traditional page-based navigation for authenticated users — the chat is always the anchor.
+## Navigation
 
-## Navigation (top bar — minimal)
-
+**Authenticated:**
 ```
-[⚡ Firemind Logo]    [Standard][Modern ●]    [🕐 History][🔔 Alerts][📅 Events][avatar ▾]
+[⚡ Firemind]    [Oracle]  [Metagame]    [🕐 History][🔔 Alerts][avatar ▾]
 ```
 
-- Format toggle is the only persistent nav control — sets context for all oracle queries
-- 🕐, 🔔, and 📅 all open drawers; they are not page navigations
-- Avatar opens account dropdown (settings, subscription, sign out)
-- Unauthenticated: 🕐 🔔 📅 hidden; show [Sign in] [Go Spike] instead
+**Unauthenticated:**
+```
+[⚡ Firemind]    [Oracle]  [Metagame]    [Sign in]  [Go Spike ↑]
+```
+
+- Format toggle lives in the Metagame section only — not global
+- 🕐, 🔔 open drawers (Spike only for 🕐 history; 1 alert free)
 - No other top-level nav items
 
-## Drawer pattern
-
-All secondary views (archetype detail, events feed, alerts, account settings) slide in as drawers over the chat. The chat remains visible and accessible behind the drawer. Consistent mental model: one place, everything reachable.
+---
 
 ## Pages
 
-### `/` — Landing (unauthenticated)
+### `/` — Landing
 
 ```
 Know what's winning. Before you register.
 [Ask about the metagame...                    →]
+
 What's dominating Modern?    Best deck for RCQs?
 Is Amulet Titan tier 1?      Standard after the ban?
 ──────────────────────────────────────────────────
 MODERN                         STANDARD
 Murktide  18.4% ↑   Amulet 13.1% →   Domain 21% ↑↑ ...
-[ Sign up free — no credit card ]
+──────────────────────────────────────────────────
+[ Sign up free — no credit card ]   [ See metagame charts → ]
 ```
 
-- Full-width oracle input is the hero — no demo video, no carousel, no hero image
-- Suggested queries below input seed curiosity immediately
-- Live metagame data below the fold — real numbers, no login required
-- Social proof strip: "X events processed · Y queries answered this week"
-- Pricing section: Casual vs Spike inline, no separate page needed for the pitch
-- CTA: Discord / Google auth, no email/password
-- **SEO note**: all text is real HTML, not client-rendered — indexable by Google
+- Oracle input is the hero — seeds curiosity immediately
+- Live metagame data below fold — real numbers, no login required
+- Two CTAs at the bottom: sign up for oracle, or explore charts freely
+- All content is real HTML — indexable
 
-### `/` — Home (authenticated, oracle)
+---
 
-- Same URL as landing — auth state determines what renders
-- Full-width chat interface, empty state with suggested prompts
-- Format toggle in top bar sets oracle context
-- Oracle responses embed live data inline (archetype bars, trend arrows) — see below
-- Query counter visible near input: "8 / 10 queries today" (Casual) or "24 / 30" (Spike)
-- No separate `/dashboard` or `/oracle` route — the home IS the oracle
+### `/oracle` — The Firemind
 
-### Oracle response format (inline data)
+Full-width chat interface. The oracle is the product.
 
-Archetype names in oracle responses are tappable — clicking opens the archetype drawer.
-Responses with metagame data embed live bars directly in the message bubble:
+```
+┌─────────────────────────────────────────────────────────┐
+│  ⚡ Firemind    [Oracle] [Metagame]       [🕐][🔔][  ]  │
+├─────────────────────────────────────────────────────────┤
+│                                                         │
+│              What would you like to know?               │
+│                                                         │
+│    ┌─────────────────────────────────────────────┐      │
+│    │  What's dominating Modern right now?         │      │
+│    │  What should I play at my RCQ this weekend?  │      │
+│    │  Is Murktide still the deck to beat?         │      │
+│    │  Build me a sideboard plan vs Amulet Titan   │      │
+│    └─────────────────────────────────────────────┘      │
+│                                                         │
+│  ┌───────────────────────────────────────────────────┐  │
+│  │  5 / 5 queries today  ·  Ask the Firemind... [→] │  │
+│  └───────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────┘
+```
 
+- Query counter inline with input: "5 / 5 queries today" (Casual) or "22 / 30" (Spike)
+- Unauthenticated users can see the interface but must sign in to query
+- Oracle responses embed inline data cards — archetype names are tappable links to `/metagame/[format]/[archetype]`
+- Spike CTA appears when Casual hits query limit: "You're out of queries — upgrade for 30/day"
+
+**Oracle response format:**
 ```
 ⚡ Firemind
-┌─────────────────────────────────────────────────┐
-│ Modern is defined by three pillars this week:   │
-│                                                 │
-│  [Murktide Regent]  ██████████████  18.4%  ↑   │
-│  [Amulet Titan]     ██████████      13.1%  →   │
-│  [Boros Energy]     ███████          9.7%  ↑↑  │
-│                                                 │
-│ Energy is the breakout story — gained ~4%       │
-│ share in two weeks, back-to-back top 8s...      │
-└─────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────┐
+│ Modern is defined by three pillars this week:        │
+│                                                      │
+│  [Murktide Regent]  ██████████████  18.4%  ↑        │
+│  [Amulet Titan]     ██████████      13.1%  →        │
+│  [Boros Energy]     ███████          9.7%  ↑↑       │
+│                                                      │
+│ Energy is the breakout story — gained ~4% share      │
+│ over two weeks, back-to-back Showcase top 8s...      │
+└──────────────────────────────────────────────────────┘
 ```
 
-### Archetype detail drawer
+Archetype names in responses link directly to metagame archetype pages.
 
-Opens on: clicking an archetype name in any oracle response, or from events drawer.
+**Chat history drawer (🕐 — Spike only):**
+- Full conversation list, searchable
+- Resume any past conversation
+- Casual users see the icon but get an upgrade prompt
+
+---
+
+### `/metagame` — Format selector
+
+Redirect or simple landing: choose Standard or Modern. On desktop, could default to Modern.
+
+---
+
+### `/metagame/[format]` — Format overview
+
+Public, SSR, fully crawlable.
 
 ```
-┌── chat (visible behind) ──┬── Boros Energy [×] ──────────────┐
-│                            │  Modern · Tier 1                  │
-│                            │  Meta share   9.7%   ↑↑           │
-│                            │  Win rate     54.2%               │
-│                            │  ─────────────────────────────    │
-│                            │  Trend  [▁▂▃▄▅▇▇▇▇█]  (30d)      │
-│                            │  Representative list  [View →]    │
-│                            │                                   │
-│                            │  ── Spike ──────────────────────  │
-│                            │  Matchup matrix  [blurred]        │
-│                            │  "Unlock with Spike — $4.99/mo"   │
-│                            │  [Upgrade]                        │
-│                            │                                   │
-│                            │  [🔔 Subscribe to alerts]         │
-└────────────────────────────┴───────────────────────────────────┘
+┌─────────────────────────────────────────────────────────┐
+│  ⚡ Firemind    [Oracle] [Metagame]       [🔔][  ]      │
+├─────────────────────────────────────────────────────────┤
+│  Modern Metagame          [7d ▾]  [Meta share ▾]        │
+│                                                         │
+│  ████████████████  Murktide Regent   18.4%  ↑          │
+│  ████████████      Amulet Titan      13.1%  →          │
+│  ████████          Boros Energy       9.7%  ↑↑         │
+│  ██████            Rhinos             8.2%  ↓           │
+│  ████              Living End         5.1%  →          │
+│  ...                                                    │
+│                                                         │
+│  ┌──────────────────────────────────────────────────┐  │
+│  │ ⚡ "Energy is surging — here's what that means   │  │
+│  │    for your RCQ prep this weekend."              │  │
+│  │                           [Ask the Firemind →]   │  │
+│  └──────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────┘
 ```
 
-### Events drawer (📅 icon)
+- Filters: time range (7d / 30d / 90d / all), sort by meta share or win rate
+- Archetype rows are tappable → `/metagame/[format]/[archetype]`
+- Oracle summary card at bottom: cached synthesis, CTA to oracle
+- OG image: "Modern Metagame — [date]" with top 3 archetypes
 
-- Recent MTGO events: Showcase Challenges, Prelims, Leagues
-- Filter: format, event type
-- Tap event → event detail expands inline within drawer
-- Event detail: top 4 (Casual) or top 8/16 (Spike), oracle commentary, winning list link
+---
 
-### Alerts drawer (🔔 icon)
+### `/metagame/[format]/[archetype]` — Archetype detail
 
-- Subscribed archetypes list (add/remove) — 1 max Casual, unlimited Spike
-- Email digest settings: per-format toggle, frequency
-- Preview of alert email format
-- Upgrade prompt for Casual: "Get email alerts when your archetype top 8s"
+Public, SSR, fully crawlable. The main SEO surface and conversion page.
 
-### `/pricing` — Standalone page
+```
+┌─────────────────────────────────────────────────────────┐
+│  Modern › Boros Energy                                  │
+│  Tier 1 · 9.7% meta share · 54.2% win rate             │
+│                                                         │
+│  Meta share (30d)   [▁▂▃▄▅▇▇▇▇█]                       │
+│  Win rate   (30d)   [▄▄▅▅▅▆▆▅▆▆]                       │
+│                                                         │
+│  Recent results                                         │
+│  Mar 1  MTGO Showcase  1st   Pilot: Aspiringspike       │
+│  Feb 28 MTGO Prelim    3rd   Pilot: kanister            │
+│  Feb 26 MTGO Prelim    2nd   Pilot: ...                 │
+│                                                         │
+│  ┌──────────────────────────────────────────────────┐  │
+│  │  ⚡ Ask the Firemind about Boros Energy    [→]   │  │
+│  └──────────────────────────────────────────────────┘  │
+│                                                         │
+│  [Generate sample deck list]          — Spike only      │
+│  [Sideboard plan vs the field]        — Spike only      │
+│  [🔔 Alert me when this top 8s]       — 1 free / ∞ Spike│
+└─────────────────────────────────────────────────────────┘
+```
 
-- Linkable from emails, social, Discord
-- Casual vs Spike side-by-side
-- FAQ: "Is my data always fresh?" "Can I cancel anytime?"
-- No other standalone pages needed for auth'd users — everything is a drawer
+- "Ask the Firemind" CTA uses the free query quota — accessible to all
+- Deck list generation and sideboard CTAs are Spike-only, shown with upgrade prompt if Casual
+- OG image: archetype name, format, meta %, trend arrow
+- Shareable oracle result permalink when oracle is invoked from this page
 
-### `/settings` — Account (drawer or page)
-
-- Profile, auth connections (Discord/Google)
-- Subscription status + Stripe billing portal link
-- Query usage this period
-
-## Feature gating pattern
-
-Locked Spike features appear inline within the drawer, blurred, with a contextual upgrade prompt. Never a full-page block. The upgrade CTA is always exactly where the locked content would be.
+---
 
 ### `/reports/[format]-[date]` — Public meta reports
 
-- Weekly meta digest published as a public page (same content as Spike email digest)
-- Fully SSR, fully indexed — SEO compound value over time
-- Canonical URL shared in the digest email itself ("Read online →")
-- Example: `/reports/modern-2026-03-09`
+Weekly digest published as a public SSR page. Fully indexed — SEO compound value.
+Same content as the Spike email digest. Canonical URL included in the digest email.
+
+---
 
 ### `/oracle/results/[id]` — Shareable oracle result
 
-- Public permalink to a **single oracle response** — never a full conversation thread
-- Shows: the query that prompted it, the response, archetype/format context, timestamp
-- Deliberately minimal — no surrounding conversation, no user identity exposed
-- Social share buttons (Reddit, Twitter/X, copy link)
-- CTA: "Get your own oracle queries — it's free" → signup
+Public permalink to a single oracle response (not a full conversation).
+Shows: the query, the response, archetype/format context, timestamp.
+Social share buttons. CTA: "Get your own oracle queries — it's free."
 
-**Why single-response scope matters:** Chat history (full threads, continuable, searchable) is a Spike feature. Shareable links are read-only snapshots of individual messages — a different artifact entirely. Casual users bookmarking their own share links get a pile of disconnected static cards with no threading, no ability to continue, no organization. It's not a meaningful substitute for in-app history.
+---
 
-## URL conventions
+### `/pricing` — Standalone pricing page
 
-- Archetype slugs: kebab-case, format-scoped if needed (`/archetypes/modern-murktide`, `/archetypes/standard-domain-ramp`)
-- Event IDs: source + event ID (`/events/mtgo-challenge-20260228`)
+Casual vs Spike side-by-side. Linkable from emails, social, Discord.
+FAQ: "Are the charts always free?" "Can I cancel anytime?"
+
+---
+
+### `/settings` — Account
+
+Profile, auth connections, subscription + Stripe billing portal, query usage this period.
+
+---
+
+## Feature gating pattern
+
+Locked Spike features appear inline with a contextual upgrade prompt — never a full-page block.
+
+```
+[Generate sample deck list]
+"Unlock deck generation with Spike — $4.99/mo"   [Upgrade]
+```
+
+The free "Ask the Firemind" CTA always appears first and is always tappable,
+giving Casual users a taste of the oracle before hitting the harder Spike gates.

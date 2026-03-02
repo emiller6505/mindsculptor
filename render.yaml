@@ -1,5 +1,22 @@
 services:
-  # ── Web service (Next.js) — added in Phase 3 ──────────────────────────────
+  # ── Web service (Next.js — frontend + query API) ──────────────────────────
+  - type: web
+    name: mindsculptor-web
+    runtime: node
+    plan: starter
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
 
   # ── Cron jobs ─────────────────────────────────────────────────────────────
   - type: cron

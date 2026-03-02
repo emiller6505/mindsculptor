@@ -1,5 +1,5 @@
-import { supabase } from '../lib/supabase.js'
-import type { Intent } from './intent.js'
+import { supabase } from '../lib/supabase'
+import type { Intent } from './intent'
 
 export interface DeckSummary {
   pilot: string
