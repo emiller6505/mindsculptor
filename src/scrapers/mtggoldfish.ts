@@ -2,9 +2,13 @@ import 'dotenv/config'
 import { supabase } from '../lib/supabase.js'
 
 const BASE_URL = 'https://www.mtggoldfish.com'
-const LISTING_URL = `${BASE_URL}/tournament/results`
 const RATE_LIMIT_MS = 2000
 const USER_AGENT = 'Mozilla/5.0 (compatible; firemind-bot/1.0; +https://github.com/emiller6505/firemind)'
+
+const FORMAT_PAGES = [
+  { url: `${BASE_URL}/metagame/modern#paper`, format: 'modern' },
+  { url: `${BASE_URL}/metagame/standard#paper`, format: 'standard' },
+]
 
 async function fetchText(url: string): Promise<string> {
   const controller = new AbortController()
@@ -90,25 +94,28 @@ async function scrapeTournament(url: string): Promise<'stored' | 'skipped' | 'er
 }
 
 export async function scrapeNewMtggoldfishEvents(): Promise<void> {
-  console.log('[mtggoldfish] Fetching tournament listing...')
-  const listingHtml = await fetchText(LISTING_URL)
-  const allUrls = extractTournamentUrls(listingHtml)
-  console.log(`[mtggoldfish] Found ${allUrls.length} Modern/Standard tournament URLs`)
-
   const alreadyScraped = await getAlreadyScrapedUrls()
-  const newUrls = allUrls.filter(u => !alreadyScraped.has(u))
-  console.log(`[mtggoldfish] ${newUrls.length} new (${alreadyScraped.size} already stored)`)
 
-  let stored = 0, skipped = 0, errors = 0
+  for (const { url: listingUrl, format } of FORMAT_PAGES) {
+    console.log(`[mtggoldfish] Fetching ${format} listing...`)
+    const listingHtml = await fetchText(listingUrl)
+    const allUrls = extractTournamentUrls(listingHtml)
+    console.log(`[mtggoldfish] Found ${allUrls.length} ${format} tournament URLs`)
 
-  for (const [i, url] of newUrls.entries()) {
-    const result = await scrapeTournament(url)
-    if (result === 'stored') stored++
-    else if (result === 'skipped') skipped++
-    else errors++
-    console.log(`[mtggoldfish] ${result}: ${url}`)
-    if (i < newUrls.length - 1) await sleep(RATE_LIMIT_MS)
+    const newUrls = allUrls.filter(u => !alreadyScraped.has(u))
+    console.log(`[mtggoldfish] ${newUrls.length} new`)
+
+    let stored = 0, skipped = 0, errors = 0
+
+    for (const [i, url] of newUrls.entries()) {
+      const result = await scrapeTournament(url)
+      if (result === 'stored') stored++
+      else if (result === 'skipped') skipped++
+      else errors++
+      console.log(`[mtggoldfish] ${result}: ${url}`)
+      if (i < newUrls.length - 1) await sleep(RATE_LIMIT_MS)
+    }
+
+    console.log(`[mtggoldfish] ${format} done — stored: ${stored}, skipped: ${skipped}, errors: ${errors}`)
   }
-
-  console.log(`[mtggoldfish] Done — stored: ${stored}, skipped: ${skipped}, errors: ${errors}`)
 }

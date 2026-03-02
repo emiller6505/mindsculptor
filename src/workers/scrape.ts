@@ -13,21 +13,33 @@ import { parsePendingMtgtop8Jobs } from '../parsers/mtgtop8.js'
 import { scrapeNewTopdeckEvents } from '../scrapers/topdeck.js'
 import { parsePendingTopdeckJobs } from '../parsers/topdeck.js'
 
+let anyFailed = false
+
+async function run(label: string, fn: () => Promise<void>): Promise<void> {
+  try {
+    await fn()
+  } catch (err) {
+    console.error(`[scrape] ${label} failed:`, err)
+    anyFailed = true
+  }
+}
+
 async function main() {
   console.log(`[scrape] Starting scrape run at ${new Date().toISOString()}`)
 
-  await scrapeNewMtgoEvents()
-  await parsePendingMtgoJobs()
+  await run('mtgo scrape',        scrapeNewMtgoEvents)
+  await run('mtgo parse',         parsePendingMtgoJobs)
+  await run('mtggoldfish scrape', scrapeNewMtggoldfishEvents)
+  await run('mtggoldfish parse',  parsePendingMtggoldfishJobs)
+  await run('mtgtop8 scrape',     scrapeNewMtgtop8Events)
+  await run('mtgtop8 parse',      parsePendingMtgtop8Jobs)
+  await run('topdeck scrape',     scrapeNewTopdeckEvents)
+  await run('topdeck parse',      parsePendingTopdeckJobs)
 
-  await scrapeNewMtggoldfishEvents()
-  await parsePendingMtggoldfishJobs()
-
-  await scrapeNewMtgtop8Events()
-  await parsePendingMtgtop8Jobs()
-
-  await scrapeNewTopdeckEvents()
-  await parsePendingTopdeckJobs()
-
+  if (anyFailed) {
+    console.error(`[scrape] Run completed with errors at ${new Date().toISOString()}`)
+    process.exit(1)
+  }
   console.log(`[scrape] Scrape run complete at ${new Date().toISOString()}`)
 }
 

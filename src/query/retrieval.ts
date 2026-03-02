@@ -135,8 +135,9 @@ async function fetchTopDecks(
     `)
     .gte('tournaments.date', cutoff)
     .not('placement', 'is', null)
+    .lte('placement', 32)
     .order('placement', { ascending: true })
-    .limit(24)
+    .limit(500)
 
   if (format) query = query.eq('tournaments.format', format)
 
@@ -153,7 +154,7 @@ async function fetchTopDecks(
   const { data, error } = await query
   if (error) throw new Error(`Deck retrieval error: ${error.message}`)
 
-  let decks = (data ?? []).map(row => {
+  const allDecks = (data ?? []).map(row => {
     const t = row.tournaments as unknown as { name: string; date: string; format: string; tier: string | null }
     const rawList = row.raw_list as { mainboard: { name: string; qty: number }[]; sideboard: { name: string; qty: number }[] } | null
     const deckArchetypes = row.deck_archetypes as unknown as Array<{ confidence: number; archetypes: { name: string } | null }> | null
@@ -171,6 +172,25 @@ async function fetchTopDecks(
       sideboard: rawList?.sideboard ?? [],
     }
   })
+
+  // Cap at top 8 per tournament so every event contributes equally regardless of
+  // how many total tournaments are in the window. Sort by recency then placement.
+  const TOP_PER_TOURNAMENT = 8
+  const byTournament = new Map<string, typeof allDecks>()
+  for (const deck of allDecks) {
+    const key = `${deck.tournament_name}||${deck.tournament_date}`
+    if (!byTournament.has(key)) byTournament.set(key, [])
+    byTournament.get(key)!.push(deck)
+  }
+  let decks: typeof allDecks = []
+  for (const tDecks of byTournament.values()) {
+    decks.push(...tDecks.slice(0, TOP_PER_TOURNAMENT))
+  }
+  // Most recent tournaments first, then by placement within each event
+  decks.sort((a, b) =>
+    b.tournament_date.localeCompare(a.tournament_date) ||
+    (a.placement ?? 999) - (b.placement ?? 999)
+  )
 
   // Fallback: keyword heuristic when vector search isn't available or returned nothing
   if (archetypeHints.length > 0 && archetypeIds === null) {
