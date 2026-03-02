@@ -91,12 +91,12 @@ export function extractTournamentMeta(html: string, sourceUrl: string): Tourname
 }
 
 // Extract deck standings from tournament page HTML.
-// MTGGoldfish results tables have rows with placement, deck link, player name.
+// MTGGoldfish results tables have rows with: record | deck link | player link | prices.
+// Placement is implicit in row order (no explicit number column).
 export function extractStandings(html: string): StandingRow[] {
   const standings: StandingRow[] = []
+  let placement = 0
 
-  // Match table rows containing a deck link (/deck/DIGITS)
-  // Typical row: <td>1</td><td><a href="/deck/67890">Burn</a></td><td>JohnDoe</td>
   const rowRe = /<tr[^>]*>([\s\S]*?)<\/tr>/gi
   let rowMatch: RegExpExecArray | null
 
@@ -104,11 +104,8 @@ export function extractStandings(html: string): StandingRow[] {
     const row = rowMatch[1]
     if (!row.includes('/deck/')) continue
 
-    // Placement: first <td> with a number
-    const placementMatch = row.match(/<td[^>]*>\s*(\d+)\s*<\/td>/)
-    if (!placementMatch) continue
-    const placement = parseInt(placementMatch[1], 10)
-    if (isNaN(placement) || placement > MAX_DECK_FETCH) continue
+    placement++
+    if (placement > MAX_DECK_FETCH) break
 
     // Deck link + name
     const deckMatch = row.match(/href="\/deck\/(\d+)[^"]*"[^>]*>([^<]+)<\/a>/)
@@ -116,14 +113,14 @@ export function extractStandings(html: string): StandingRow[] {
     const deckId = deckMatch[1]
     const deckName = deckMatch[2].trim()
 
-    // Player name: next <td> after the deck cell
-    const playerMatch = row.match(/href="\/deck\/\d+[^"]*"[^>]*>[^<]+<\/a>\s*<\/td>\s*<td[^>]*>\s*([^<\s][^<]*?)\s*<\/td>/)
-    const pilot = playerMatch ? playerMatch[1].trim() : 'Unknown'
+    // Player name: prefer <a href="/player/..."> link; fall back to bare text
+    const playerLinkMatch = row.match(/href="\/player\/[^"]*"[^>]*>([^<]+)<\/a>/)
+    const pilot = playerLinkMatch ? playerLinkMatch[1].trim() : 'Unknown'
 
     standings.push({ placement, deckId, deckName, pilot })
   }
 
-  return standings.sort((a, b) => a.placement - b.placement)
+  return standings
 }
 
 // Parse a deck download text (MTGO format) into mainboard + sideboard.

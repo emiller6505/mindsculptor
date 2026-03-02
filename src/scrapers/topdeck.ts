@@ -6,6 +6,15 @@ const GAME = 'Magic: The Gathering'
 const FORMATS = ['Modern', 'Standard']
 const RATE_LIMIT_MS = 2000
 
+// Topdeck's format filter is loose — prerelease, sealed, draft, and 2HG events
+// can appear under "Standard". Exclude them by name.
+const EXCLUDE_KEYWORDS = ['prerelease', 'sealed', 'draft', '2 headed', '2-headed', 'two headed', '2hg', 'commander']
+
+function isCompetitiveConstructed(name: string): boolean {
+  const lower = name.toLowerCase()
+  return !EXCLUDE_KEYWORDS.some(kw => lower.includes(kw))
+}
+
 function sleep(ms: number) {
   return new Promise(resolve => setTimeout(resolve, ms))
 }
@@ -92,7 +101,9 @@ export async function scrapeNewTopdeckEvents(): Promise<void> {
       continue
     }
 
-    const newTournaments = tournaments.filter(t => !alreadyScraped.has(t.TID))
+    const newTournaments = tournaments.filter(t =>
+      !alreadyScraped.has(t.TID) && isCompetitiveConstructed(t.tournamentName)
+    )
     console.log(`[topdeck] ${format}: ${tournaments.length} total, ${newTournaments.length} new`)
 
     let stored = 0, errors = 0

@@ -27,10 +27,11 @@ function sleep(ms: number) {
 }
 
 // Extract event URLs from a MTGTop8 format listing page.
-// Links look like href="/event?e=12345"
+// Links can be relative (event?e=12345&f=MO) or absolute (/event?e=12345).
 export function extractEventUrls(html: string): string[] {
-  const matches = [...html.matchAll(/href="(\/event\?e=(\d+))"/g)]
-  return [...new Set(matches.map(m => BASE_URL + m[1]))]
+  const matches = [...html.matchAll(/href="[^"]*event\?e=(\d+)/g)]
+  const ids = [...new Set(matches.map(m => m[1]))]
+  return ids.map(id => `${BASE_URL}/event?e=${id}`)
 }
 
 async function getAlreadyScrapedUrls(): Promise<Set<string>> {
