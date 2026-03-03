@@ -5,8 +5,11 @@ export interface LLMOptions {
   temperature?: number
 }
 
+export type HistoryMessage = { role: 'user' | 'assistant'; content: string }
+
 export interface LLMProvider {
   complete(system: string, user: string, opts?: LLMOptions): Promise<string>
+  completeWithHistory(system: string, messages: HistoryMessage[], opts?: LLMOptions): Promise<string>
 }
 
 class ClaudeProvider implements LLMProvider {
@@ -25,6 +28,19 @@ class ClaudeProvider implements LLMProvider {
       temperature: opts.temperature ?? 1,
       system,
       messages: [{ role: 'user', content: user }],
+    })
+    const block = msg.content[0]
+    if (!block || block.type !== 'text') throw new Error('Unexpected response type from Claude')
+    return block.text
+  }
+
+  async completeWithHistory(system: string, messages: HistoryMessage[], opts: LLMOptions = {}): Promise<string> {
+    const msg = await this.client.messages.create({
+      model: 'claude-sonnet-4-6',
+      max_tokens: opts.maxTokens ?? 1024,
+      temperature: opts.temperature ?? 1,
+      system,
+      messages,
     })
     const block = msg.content[0]
     if (!block || block.type !== 'text') throw new Error('Unexpected response type from Claude')

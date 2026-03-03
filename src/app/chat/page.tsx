@@ -145,11 +145,15 @@ function ChatPageInner() {
     setMessages(prev => [...prev, { role: 'user', content: q }])
     setLoading(true)
 
+    const history = messages
+      .map(m => ({ role: m.role === 'oracle' ? 'assistant' as const : 'user' as const, content: m.content }))
+      .slice(-6)
+
     try {
       const res = await fetch('/api/query', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query: q }),
+        body: JSON.stringify({ query: q, messages: history }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? 'Unknown error')

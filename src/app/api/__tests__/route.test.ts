@@ -79,7 +79,7 @@ describe('POST /api/query adversarial input', () => {
     const res = await POST(makeReq({ query: injection }))
 
     expect(res.status).toBe(200)
-    expect(handleQuery).toHaveBeenCalledWith(injection)
+    expect(handleQuery).toHaveBeenCalledWith(injection, [])
   })
 
   it('passes an XSS attempt through without throwing', async () => {
@@ -87,7 +87,7 @@ describe('POST /api/query adversarial input', () => {
     const res = await POST(makeReq({ query: xss }))
 
     expect(res.status).toBe(200)
-    expect(handleQuery).toHaveBeenCalledWith(xss)
+    expect(handleQuery).toHaveBeenCalledWith(xss, [])
   })
 
   it('passes unicode input through correctly', async () => {
@@ -95,7 +95,7 @@ describe('POST /api/query adversarial input', () => {
     const res = await POST(makeReq({ query: unicode }))
 
     expect(res.status).toBe(200)
-    expect(handleQuery).toHaveBeenCalledWith(unicode)
+    expect(handleQuery).toHaveBeenCalledWith(unicode, [])
   })
 
   it('returns 500 when handleQuery throws', async () => {
@@ -114,5 +114,51 @@ describe('POST /api/query adversarial input', () => {
 
     expect(body.error).toBe('Query failed')
     expect(JSON.stringify(body)).not.toContain('secret connection string')
+  })
+})
+
+describe('POST /api/query messages handling', () => {
+  it('forwards valid messages array to handleQuery', async () => {
+    const messages = [
+      { role: 'user', content: 'What is the best deck?' },
+      { role: 'assistant', content: 'Burn is great.' },
+    ]
+    await POST(makeReq({ query: 'Is that still true?', messages }))
+
+    expect(handleQuery).toHaveBeenCalledWith('Is that still true?', messages)
+  })
+
+  it('truncates messages to last 6 server-side', async () => {
+    const messages = Array.from({ length: 10 }, (_, i) => ({
+      role: i % 2 === 0 ? 'user' : 'assistant',
+      content: `message ${i}`,
+    }))
+    await POST(makeReq({ query: 'follow up', messages }))
+
+    const [, history] = vi.mocked(handleQuery).mock.calls[0]!
+    expect(history).toHaveLength(6)
+    expect(history![0].content).toBe('message 4')
+  })
+
+  it('treats missing messages as empty history', async () => {
+    await POST(makeReq({ query: 'standalone question' }))
+
+    expect(handleQuery).toHaveBeenCalledWith('standalone question', [])
+  })
+
+  it('filters out invalid message entries missing role or content', async () => {
+    const messages = [
+      { role: 'user', content: 'valid message' },
+      { content: 'missing role' },
+      { role: 'assistant' },
+      null,
+      { role: 'assistant', content: 'also valid' },
+    ]
+    await POST(makeReq({ query: 'follow up', messages }))
+
+    const [, history] = vi.mocked(handleQuery).mock.calls[0]!
+    expect(history).toHaveLength(2)
+    expect(history![0].content).toBe('valid message')
+    expect(history![1].content).toBe('also valid')
   })
 })
