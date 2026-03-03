@@ -69,6 +69,7 @@ export const INTENT_FIXTURE = {
   question_type: 'metagame' as const,
   archetype: null,
   archetype_b: null,
+  opponent_archetype: null,
   card: null,
   timeframe_days: 90 as const,
 }

@@ -36,3 +36,42 @@ export function TrendLinesSkeleton() {
     </div>
   )
 }
+
+export function ArchetypeHeaderSkeleton() {
+  return (
+    <div className="space-y-3">
+      <Skeleton className="h-3 w-48" />
+      <div className="flex items-center gap-3">
+        <Skeleton className="h-8 w-48" />
+        <Skeleton className="h-5 w-16 rounded-md" />
+        <Skeleton className="h-5 w-16 rounded-md" />
+      </div>
+      <div className="flex items-baseline gap-4">
+        <Skeleton className="h-9 w-20" />
+        <Skeleton className="h-5 w-6" />
+        <Skeleton className="h-4 w-20" />
+      </div>
+      <Skeleton className="h-3 w-56" />
+    </div>
+  )
+}
+
+export function ShareOverTimeSkeleton() {
+  return (
+    <div className="py-4">
+      <Skeleton className="h-[300px] w-full rounded-lg" />
+    </div>
+  )
+}
+
+export function RecentResultsSkeleton() {
+  return (
+    <div className="space-y-2 py-4">
+      <Skeleton className="h-4 w-full" />
+      <Skeleton className="h-4 w-full" />
+      <Skeleton className="h-4 w-full" />
+      <Skeleton className="h-4 w-11/12" />
+      <Skeleton className="h-4 w-10/12" />
+    </div>
+  )
+}

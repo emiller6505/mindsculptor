@@ -17,7 +17,7 @@ beforeEach(() => {
   vi.resetAllMocks()
   vi.mocked(handleQuery).mockResolvedValue({
     answer: 'Burn is tier 1.',
-    intent: { format: 'modern', question_type: 'metagame', archetype: null, archetype_b: null, card: null, timeframe_days: 90 },
+    intent: { format: 'modern', question_type: 'metagame', archetype: null, archetype_b: null, opponent_archetype: null, card: null, timeframe_days: 90 },
     data: { format: 'modern', window_days: 90, tournaments_count: 1, top_decks: [], card_info: null, confidence: 'HIGH' },
   })
 })

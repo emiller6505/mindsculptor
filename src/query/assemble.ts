@@ -5,6 +5,12 @@ import { rcqPromptNote } from '../lib/rcq-schedule'
 export function assembleContext(intent: Intent, data: RetrievedData): string {
   const lines: string[] = []
 
+  if (intent.opponent_archetype) {
+    lines.push(`=== Query Framing ===`)
+    lines.push(`The user is asking how to play AGAINST ${intent.opponent_archetype} — they are NOT playing ${intent.opponent_archetype}. The deck data below shows what ${intent.opponent_archetype} pilots play. Use it to identify their key threats and win conditions, then recommend sideboard answers and in-game strategies for defeating them.`)
+    lines.push('')
+  }
+
   lines.push(`=== Metagame Data ===`)
   lines.push(`Format: ${data.format ?? 'unspecified'} | Window: last ${data.window_days} days | Tournaments: ${data.tournaments_count} | Decks analyzed: ${data.top_decks.length} | Data confidence: ${data.confidence}`)
 

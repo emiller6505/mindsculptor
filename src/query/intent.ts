@@ -4,10 +4,11 @@ import { rcqPromptNote } from '../lib/rcq-schedule'
 export interface Intent {
   format: 'modern' | 'standard' | null
   question_type: 'metagame' | 'deck_advice' | 'card_question' | 'matchup' | 'general'
-  archetype: string | null      // primary archetype mentioned
-  archetype_b: string | null    // second archetype (matchup questions only)
-  card: string | null           // specific card name (card_question only)
-  timeframe_days: 30 | 60 | 90  // lookback window; default 90
+  archetype: string | null          // primary archetype the user is playing / asking about
+  archetype_b: string | null        // second archetype (matchup questions only)
+  opponent_archetype: string | null // archetype the user wants to beat ("against X", "how to beat X")
+  card: string | null               // specific card name (card_question only)
+  timeframe_days: 30 | 60 | 90     // lookback window; default 90
 }
 
 const SYSTEM_BASE = `You are a Magic: the Gathering query parser. Extract structured intent from the user's question.
@@ -19,6 +20,7 @@ Return ONLY valid JSON matching this exact schema — no prose, no markdown, no 
   "question_type": "metagame" | "deck_advice" | "card_question" | "matchup" | "general",
   "archetype": string | null,
   "archetype_b": string | null,
+  "opponent_archetype": string | null,
   "card": string | null,
   "timeframe_days": 30 | 60 | 90
 }
@@ -26,8 +28,9 @@ Return ONLY valid JSON matching this exact schema — no prose, no markdown, no 
 Rules:
 - format: infer from context ("rotation" or "Standard" → "standard", "Modern" → "modern"). For RCQ questions, use the current RCQ season format noted below — do NOT default to modern. null if still ambiguous.
 - question_type: "metagame" = meta share/tier questions, "deck_advice" = what to play/build, "card_question" = specific card usage/value, "matchup" = archetype vs archetype, "general" = anything else.
-- archetype: normalize to a common name (e.g. "Izzet Murktide" not "blue-red tempo"). null if not mentioned.
-- archetype_b: only for matchup questions; null otherwise.
+- archetype: the deck the user is playing or asking how to play. Normalize to a common name (e.g. "Izzet Murktide" not "blue-red tempo"). null if not mentioned.
+- archetype_b: only for explicit matchup questions (X vs Y); null otherwise.
+- opponent_archetype: the deck the user wants to BEAT or sideboard AGAINST. Set this when the user says "against X", "how do I beat X", "sideboard plan vs X", "what beats X", etc. In these cases archetype should be null (user didn't name their own deck). Never set both archetype and opponent_archetype for the same deck.
 - card: canonical card name if this is a card question; null otherwise.
 - timeframe_days: default 90. Use 30 if "this week", "recent", or "right now" is emphasized.`
 
@@ -48,6 +51,7 @@ function normalizeIntent(raw: Record<string, unknown>): Intent {
     question_type,
     archetype: typeof raw.archetype === 'string' ? raw.archetype : null,
     archetype_b: typeof raw.archetype_b === 'string' ? raw.archetype_b : null,
+    opponent_archetype: typeof raw.opponent_archetype === 'string' ? raw.opponent_archetype : null,
     card: typeof raw.card === 'string' ? raw.card : null,
     timeframe_days,
   }

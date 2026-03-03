@@ -56,8 +56,10 @@ export async function retrieveContext(intent: Intent): Promise<RetrievedData> {
   const window_days = intent.timeframe_days
   const cutoff = new Date(Date.now() - window_days * 86_400_000).toISOString().split('T')[0]
 
+  // For "against X" queries, fetch X's decklists so the LLM knows what threats to answer
+  const archetypeForRetrieval = intent.archetype ?? intent.opponent_archetype
   const [rawDecks, cardInfo] = await Promise.all([
-    fetchTopDecks(intent.format, cutoff, intent.archetype, intent.archetype_b),
+    fetchTopDecks(intent.format, cutoff, archetypeForRetrieval, intent.archetype_b),
     intent.card ? fetchCardInfo(intent.card, intent.format, cutoff) : Promise.resolve(null),
   ])
 

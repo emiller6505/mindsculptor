@@ -5,10 +5,10 @@ import { useRouter } from 'next/navigation'
 import { Button, Input } from '@/components/ui'
 
 const SUGGESTED_PROMPTS = [
-  "What's dominating Modern?",
+  "Top 3 decks in Modern?",
   "Best deck for RCQs?",
-  "Is Amulet Titan tier 1?",
-  "Standard after the ban?",
+  "Mono-green decklist for Standard?",
+  "Sideboard plan against Tron?"
 ]
 
 export default function OracleInput() {

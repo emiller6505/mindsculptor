@@ -26,6 +26,7 @@ describe('extractIntent', () => {
       question_type: 'deck_advice',
       archetype: 'Azorius Soldiers',
       archetype_b: null,
+      opponent_archetype: null,
       card: null,
       timeframe_days: 30,
     }))
@@ -44,6 +45,7 @@ describe('extractIntent', () => {
       question_type: 'matchup',
       archetype: 'Burn',
       archetype_b: 'Living End',
+      opponent_archetype: null,
       card: null,
       timeframe_days: 90,
     }))
@@ -53,6 +55,23 @@ describe('extractIntent', () => {
     expect(result.question_type).toBe('matchup')
     expect(result.archetype).toBe('Burn')
     expect(result.archetype_b).toBe('Living End')
+  })
+
+  it('extracts opponent_archetype for "against X" queries', async () => {
+    vi.mocked(llm.complete).mockResolvedValueOnce(JSON.stringify({
+      format: 'modern',
+      question_type: 'deck_advice',
+      archetype: null,
+      archetype_b: null,
+      opponent_archetype: 'Tron',
+      card: null,
+      timeframe_days: 90,
+    }))
+
+    const result = await extractIntent('sideboard plan against Tron?')
+
+    expect(result.opponent_archetype).toBe('Tron')
+    expect(result.archetype).toBeNull()
   })
 
   it('throws with a useful message when the LLM returns malformed JSON', async () => {

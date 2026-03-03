@@ -62,4 +62,21 @@ describe('assembleContext', () => {
 
     expect(ctx).not.toContain('Card:')
   })
+
+  it('includes opponent framing note when opponent_archetype is set', () => {
+    const ctx = assembleContext(
+      { ...INTENT_FIXTURE, opponent_archetype: 'Tron' },
+      makeData(),
+    )
+
+    expect(ctx).toContain('Query Framing')
+    expect(ctx).toContain('AGAINST Tron')
+    expect(ctx).toContain('NOT playing Tron')
+  })
+
+  it('omits framing note when opponent_archetype is null', () => {
+    const ctx = assembleContext(INTENT_FIXTURE, makeData())
+
+    expect(ctx).not.toContain('Query Framing')
+  })
 })
