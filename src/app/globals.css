@@ -13,6 +13,7 @@ body::before {
     linear-gradient(rgba(79, 142, 247, 0.025) 1px, transparent 1px),
     linear-gradient(90deg, rgba(79, 142, 247, 0.025) 1px, transparent 1px);
   background-size: 48px 48px;
+  background-position: 24px 24px;
 }
 
 /* Content sits above the pattern */
