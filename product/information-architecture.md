@@ -219,7 +219,7 @@ FAQ: "Are the charts always free?" "Can I cancel anytime?"
 
 ### `/settings` — Account
 
-Profile, auth connections, subscription + Stripe billing portal, query usage this period.
+Profile, auth connections, subscription + Lemon Squeezy billing portal, query usage this period.
 
 ---
 

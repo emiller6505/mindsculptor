@@ -25,8 +25,8 @@ Without this, you can't monetize and can't gate features. Needs to ship with the
 
 **Includes:**
 - Discord OAuth + Google OAuth (no email/password)
-- Stripe subscription: Casual (free) and Spike ($4.99/mo)
-- Webhook from Stripe → Supabase to gate features in real-time
+- Lemon Squeezy subscription: Casual (free) and Spike ($4.99/mo) — merchant of record, handles all tax/VAT
+- Webhook from Lemon Squeezy → Supabase to gate features in real-time
 - Ephemeral sessions for unauthenticated users
 - Soft inline gating: Spike features appear blurred with contextual upgrade prompt
 
@@ -129,7 +129,7 @@ is non-trivial. Later.
 
 **Annual billing**
 ~20% discount for annual Spike subscriptions. Low engineering lift, meaningful impact
-on churn and LTV. Easy to add once Stripe integration is stable.
+on churn and LTV. Easy to add once Lemon Squeezy integration is stable.
 
 **API access**
 For content creators, deck-building tools, third-party integrations. Probably Spike

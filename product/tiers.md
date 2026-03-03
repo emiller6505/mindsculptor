@@ -43,9 +43,9 @@ The goal: high conversion through genuine value, not friction.
 
 ## Payment
 
-- Stripe for subscriptions
+- Lemon Squeezy for subscriptions (merchant of record — handles all VAT, sales tax, and year-end tax forms automatically)
 - Webhook to Supabase to gate features in real-time
-- Discord OAuth + Google OAuth for auth (no email/password friction)
+- Google OAuth for auth (Discord planned post-MVP)
 
 ## Acquisition & Retention
 
