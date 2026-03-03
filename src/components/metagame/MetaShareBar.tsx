@@ -99,6 +99,7 @@ export function MetaShareBar({ data, format }: { data: MetaShareEntry[]; format:
             type="category"
             dataKey="name"
             width={160}
+            interval={0}
             tick={(props: Record<string, unknown>) => <CustomYTick {...(props as { x: number; y: number; payload: { value: string } })} format={format} />}
             tickLine={false}
             axisLine={false}

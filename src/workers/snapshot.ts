@@ -109,6 +109,8 @@ async function computeWindow(
   console.log(`[snapshot] ${format} ${windowDays}d: ${rows.length} archetypes, ${totalDecks} total decks`)
 }
 
+const MIN_PRIOR_SAMPLE = 8
+
 async function fetchMetaShares(
   format: string,
   windowStart: string,
@@ -127,7 +129,7 @@ async function fetchMetaShares(
     .gte('decks.tournaments.date', windowStart)
     .lte('decks.tournaments.date', windowEnd)
 
-  if (!data || data.length === 0) return new Map()
+  if (!data || data.length < MIN_PRIOR_SAMPLE) return new Map()
 
   const counts = new Map<string, number>()
   for (const row of data) counts.set(row.archetype_id, (counts.get(row.archetype_id) ?? 0) + 1)
