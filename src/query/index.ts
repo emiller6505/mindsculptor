@@ -6,6 +6,8 @@ import { cacheGet, cacheSet } from '../lib/query-cache'
 import type { Intent } from './intent'
 import type { RetrievedData } from './retrieval'
 
+const sleep = (ms: number) => new Promise(r => setTimeout(r, ms))
+
 export interface QueryResponse {
   answer: string
   intent: Intent
@@ -15,7 +17,10 @@ export interface QueryResponse {
 export async function handleQuery(userQuery: string): Promise<QueryResponse> {
   const key = userQuery.trim().toLowerCase()
   const cached = cacheGet<QueryResponse>(key)
-  if (cached) return cached
+  if (cached) {
+    await sleep(1000)
+    return cached
+  }
 
   const intent = await extractIntent(userQuery)
   const data = await retrieveContext(intent)

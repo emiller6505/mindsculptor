@@ -19,9 +19,18 @@ Operate autonomously — proceed without asking for confirmation on most actions
 
 ## Tooling
 - Use `beads` (`bd`) for all task tracking — not in-chat task lists
-- Workflow: `bd ready` to find next task → claim it → do the work → `bd close <id>`
 - Each phase ends with an audit task — complete it before closing the phase
 - Audit tasks: review your own work, check data integrity, test end-to-end, self-correct before moving on
+
+## Feature Workflow (mandatory for every bead)
+
+1. **Read the bead** — `bd show <id>`, understand the full spec
+2. **Tech analysis** — verify the bead is implementable given current codebase state. Flag gotchas, missing dependencies, or spec gaps BEFORE planning.
+3. **Tech spec** — enter plan mode, write the implementation plan. Every item from the bead must appear in the plan or be explicitly called out as "NOT doing" with justification.
+4. **Plan review** — re-read the plan as a new reviewer. Check: does every bead requirement have a corresponding plan item? Are there gaps, assumptions, or items that could be silently skipped?
+5. **Implement** — follow the plan exactly. Do not skip items. Do not add unrequested changes.
+6. **Land the plane** — `npx tsc --noEmit`, `npm test`, audit all changed files against the bead spec line by line.
+7. **Close the bead** — `bd close <id>`. Do not leave beads open after work is complete.
 
 ## Quality
 - Always run tests (if they exist) after making changes and before considering a task done
