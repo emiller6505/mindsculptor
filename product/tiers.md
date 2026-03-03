@@ -7,13 +7,18 @@ The goal: high conversion through genuine value, not friction.
 
 ## Tiers
 
-### Casual (Free)
+### Anonymous (No account)
 
-- Full metagame charts: deck breakdown, meta share, win rate, trends — Standard + Modern
-- Archetype detail pages: play rates, win rates, recent results — all free
-- 12-hour fresh data
-- Oracle: 5 queries/day
-- No chat history (ephemeral if logged out; logged-in Casual gets no persistent history)
+- Full metagame charts: all `/data/**` pages, no login required
+- Oracle: 3 queries (tracked in localStorage, no DB). After limit: inline prompt to sign up
+- No chat history — session only
+- No alerts
+
+### Casual (Free account)
+
+- Everything anonymous gets, plus:
+- Oracle: 15 queries/day for first 7 days post-signup, then 5/day
+- Chat history: read-only access to last 7 days of conversations (no resuming threads)
 - Alerts: 1 archetype subscription (in-app only, no email)
 - No credit card required, ever
 
@@ -21,7 +26,7 @@ The goal: high conversion through genuine value, not friction.
 
 - Everything in Casual
 - Oracle: 30 queries/day
-- Chat history: unlimited (full history, searchable, resumable)
+- Chat history: unlimited, fully resumable and searchable (Casual gets read-only 7-day window)
 - Deck list generation: oracle generates a recommended 75 for any archetype
 - Archetype-specific oracle CTAs: "What should I sideboard against this?" etc.
 - Unlimited archetype alert subscriptions
@@ -46,9 +51,11 @@ The goal: high conversion through genuine value, not friction.
 
 ### Reducing friction
 - No CC on free tier, ever
-- 7-day Spike trial, no CC required
-- Auth via Discord (MTG's native community) or Google
-- Soft inline gates, not hard paywall pages — free users see oracle results partially, with "upgrade to continue"
+- Value-first: 3 anonymous oracle queries before any auth prompt
+- Auth prompt is inline, not a redirect — conversation context is preserved
+- 7-day onboarding boost: 15 queries/day for new signups, drops to 5/day on day 8
+- Auth via Google (Discord planned post-MVP)
+- Soft inline gates, not hard paywall pages
 
 ### Increasing stickiness
 - Archetype watchlist / alert subscriptions (reason to return)

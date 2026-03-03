@@ -37,7 +37,7 @@ function makeClaimChain(resolveWith: { data: unknown[]; error: null }) {
 }
 
 // Minimal but valid raw_content for a topdeck job with N standings
-function topdeckJobContent(numStandings: number, withDeckObj = false) {
+function topdeckJobContent(numStandings: number, withDeckObj = false, withRounds = false) {
   const standings = Array.from({ length: numStandings }, (_, i) => ({
     id: `player-${i}`,
     name: `Player${i}`,
@@ -46,9 +46,39 @@ function topdeckJobContent(numStandings: number, withDeckObj = false) {
       ? { Mainboard: { 'Lightning Bolt': { id: 'uuid', count: 4 } }, Sideboard: {} }
       : null,
   }))
+  const rounds = withRounds ? [
+    {
+      round: 1,
+      tables: [
+        {
+          tableNumber: 1,
+          players: [
+            { name: 'Player0', id: 'player-0' },
+            { name: 'Player1', id: 'player-1' },
+          ],
+          winner: 'Player0',
+          status: 'Completed',
+        },
+        {
+          tableNumber: 2,
+          players: [
+            { name: 'Player2', id: 'player-2' },
+            { name: 'Player3', id: 'player-3' },
+          ],
+          status: 'Completed', // draw — no winner
+        },
+        {
+          tableNumber: 3,
+          players: [{ name: 'Player4', id: 'player-4' }],
+          status: 'Bye',
+        },
+      ],
+    },
+  ] : undefined
   return JSON.stringify({
     meta: { TID: 'test-123', tournamentName: 'Test Event', startDate: 1700000000, format: 'Modern' },
     standings,
+    ...(rounds && { rounds }),
   })
 }
 
@@ -134,7 +164,95 @@ describe('topdeck parser status transitions', () => {
 })
 
 // ---------------------------------------------------------------------------
-// 3. Status value contract — documents what chk_scrape_jobs_status must allow
+// 3. Match parsing — topdeck rounds data
+// ---------------------------------------------------------------------------
+
+describe('topdeck match parsing', () => {
+  it('upserts match rows when rounds data is present and at least one player has a deck', async () => {
+    // Player0 has a deckObj, so matches involving Player0 should be included
+    const job = { id: 1, source_url: 'test-123', raw_content: topdeckJobContent(5, true, true) }
+
+    const upsertCalls: unknown[][] = []
+    const updateSpy = vi.fn()
+    const chain = {
+      eq:     vi.fn().mockReturnThis(),
+      select: vi.fn().mockReturnThis(),
+      order:  vi.fn().mockResolvedValue({ data: [job], error: null }),
+      upsert: vi.fn((...args: unknown[]) => {
+        upsertCalls.push(args)
+        return Promise.resolve({ error: null })
+      }),
+      in:     vi.fn().mockReturnThis(),
+      not:    vi.fn().mockReturnThis(),
+      then:   (r: (v: unknown) => unknown) => Promise.resolve({ data: [{ id: 'card-1', name: 'Lightning Bolt' }], error: null }).then(r),
+    }
+    updateSpy.mockReturnValue(chain)
+    vi.mocked(supabase.from).mockReturnValue({ ...chain, update: updateSpy } as never)
+    vi.mocked(supabase.rpc).mockResolvedValue({ error: null } as never)
+
+    await parsePendingTopdeckJobs()
+
+    // Find the upsert call for matches (has tournament_id, round, player_a fields)
+    const matchUpsert = upsertCalls.find(call => {
+      const rows = call[0]
+      return Array.isArray(rows) && rows.length > 0 && 'player_a' in (rows[0] as Record<string, unknown>)
+    })
+
+    expect(matchUpsert).toBeDefined()
+    const matchRows = matchUpsert![0] as Array<Record<string, unknown>>
+
+    // Player0 has a deck → match with Player1 included (Player0 is player_a)
+    const p0Match = matchRows.find(r => r.player_a === 'Player0')
+    expect(p0Match).toBeDefined()
+    expect(p0Match!.player_b).toBe('Player1')
+    expect(p0Match!.winner).toBe('Player0')
+    expect(p0Match!.deck_a_id).toBeTruthy() // Player0 has a deck
+    expect(p0Match!.is_bye).toBe(false)
+    expect(p0Match!.is_draw).toBe(false)
+
+    // Player2 vs Player3: neither has a deck → should be EXCLUDED
+    const p2Match = matchRows.find(r => r.player_a === 'Player2')
+    expect(p2Match).toBeUndefined()
+
+    // Player4 bye: no deck → should be EXCLUDED
+    const p4Match = matchRows.find(r => r.player_a === 'Player4')
+    expect(p4Match).toBeUndefined()
+  })
+
+  it('skips match processing when no rounds data is present', async () => {
+    const job = { id: 1, source_url: 'test-123', raw_content: topdeckJobContent(4, true, false) }
+
+    const upsertCalls: unknown[][] = []
+    const updateSpy = vi.fn()
+    const chain = {
+      eq:     vi.fn().mockReturnThis(),
+      select: vi.fn().mockReturnThis(),
+      order:  vi.fn().mockResolvedValue({ data: [job], error: null }),
+      upsert: vi.fn((...args: unknown[]) => {
+        upsertCalls.push(args)
+        return Promise.resolve({ error: null })
+      }),
+      in:     vi.fn().mockReturnThis(),
+      not:    vi.fn().mockReturnThis(),
+      then:   (r: (v: unknown) => unknown) => Promise.resolve({ data: [{ id: 'card-1', name: 'Lightning Bolt' }], error: null }).then(r),
+    }
+    updateSpy.mockReturnValue(chain)
+    vi.mocked(supabase.from).mockReturnValue({ ...chain, update: updateSpy } as never)
+    vi.mocked(supabase.rpc).mockResolvedValue({ error: null } as never)
+
+    await parsePendingTopdeckJobs()
+
+    // No upsert call should contain match rows (player_a field)
+    const matchUpsert = upsertCalls.find(call => {
+      const rows = call[0]
+      return Array.isArray(rows) && rows.length > 0 && 'player_a' in (rows[0] as Record<string, unknown>)
+    })
+    expect(matchUpsert).toBeUndefined()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// 4. Status value contract — documents what chk_scrape_jobs_status must allow
 // ---------------------------------------------------------------------------
 
 describe('scrape_job status contract', () => {

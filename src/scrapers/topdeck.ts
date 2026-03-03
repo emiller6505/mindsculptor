@@ -111,6 +111,18 @@ export async function scrapeNewTopdeckEvents(): Promise<void> {
     for (const [i, t] of newTournaments.entries()) {
       try {
         const standings = await get(`/v2/tournaments/${t.TID}/standings`)
+        const standingsArr = Array.isArray(standings) ? standings : []
+
+        // Fetch round-by-round match data for events with 16+ players
+        let rounds: unknown = undefined
+        if (standingsArr.length >= 16) {
+          await sleep(RATE_LIMIT_MS)
+          try {
+            rounds = await get(`/v2/tournaments/${t.TID}/rounds`)
+          } catch (err) {
+            console.warn(`[topdeck] Failed to fetch rounds for ${t.TID}, continuing without:`, err)
+          }
+        }
 
         // Store TID as source_url for dedup on future runs
         const { error } = await supabase.from('scrape_jobs').insert({
@@ -119,6 +131,7 @@ export async function scrapeNewTopdeckEvents(): Promise<void> {
           raw_content: JSON.stringify({
             meta: { ...t, standings: undefined, format },
             standings,
+            ...(rounds !== undefined && { rounds }),
           }),
           status: 'pending',
         })

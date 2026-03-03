@@ -37,3 +37,57 @@ body > * {
     box-shadow: -4px 0 16px rgb(79 142 247 / 0.08);
   }
 }
+
+/* Prose overrides for oracle markdown — dark theme matching our tokens */
+.prose-oracle {
+  @apply text-sm leading-relaxed text-ink;
+}
+.prose-oracle h1,
+.prose-oracle h2,
+.prose-oracle h3,
+.prose-oracle h4 {
+  @apply text-ink font-medium mt-4 mb-2;
+}
+.prose-oracle p {
+  @apply mb-3;
+}
+.prose-oracle a {
+  @apply text-spark underline underline-offset-2;
+}
+.prose-oracle strong {
+  @apply text-ink font-semibold;
+}
+.prose-oracle code {
+  @apply bg-edge/50 text-ink px-1 py-0.5 rounded text-xs font-mono;
+}
+.prose-oracle pre {
+  @apply bg-edge/30 border border-edge rounded-lg p-3 overflow-x-auto my-3;
+}
+.prose-oracle pre code {
+  @apply bg-transparent p-0;
+}
+.prose-oracle ul,
+.prose-oracle ol {
+  @apply pl-5 mb-3 space-y-1;
+}
+.prose-oracle li {
+  @apply text-ink;
+}
+.prose-oracle ul li::marker {
+  @apply text-ash;
+}
+.prose-oracle hr {
+  @apply border-edge my-4;
+}
+.prose-oracle blockquote {
+  @apply border-l-2 border-edge pl-3 text-ash italic;
+}
+.prose-oracle table {
+  @apply w-full text-sm my-3;
+}
+.prose-oracle th {
+  @apply text-left text-ash font-medium border-b border-edge pb-1;
+}
+.prose-oracle td {
+  @apply border-b border-edge/50 py-1.5;
+}

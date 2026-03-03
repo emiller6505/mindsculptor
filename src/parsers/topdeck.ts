@@ -62,8 +62,95 @@ interface TopdeckMeta {
   swissNum?: number
 }
 
+export interface RoundPlayer {
+  name: string
+  id: string
+}
+
+export interface RoundTable {
+  tableNumber: number
+  players: RoundPlayer[]
+  winner?: string
+  winnerId?: string
+  status: string
+}
+
+export interface RoundData {
+  round: number | string
+  tables: RoundTable[]
+}
+
+// TopDeck uses string labels for top cut rounds ("Top 8", "Top 4", etc.)
+// Map to negative integers: Top 8 → -8, Top 4 → -4, Top 2 → -2, Finals → -1
+function parseRoundNumber(round: number | string): number | null {
+  if (typeof round === 'number') return round
+  const match = round.match(/top\s*(\d+)/i)
+  if (match) return -parseInt(match[1], 10)
+  if (/finals?/i.test(round)) return -1
+  return null
+}
+
+export interface MatchRow {
+  tournament_id: string
+  round: number
+  player_a: string
+  player_b: string | null
+  winner: string | null
+  deck_a_id: string | null
+  deck_b_id: string | null
+  is_bye: boolean
+  is_draw: boolean
+}
+
+export function buildMatchRows(
+  rounds: RoundData[],
+  tournamentId: string,
+  playerToDeckId: Map<string, string>,
+): MatchRow[] {
+  const rows: MatchRow[] = []
+
+  for (const rd of rounds) {
+    const roundNum = parseRoundNumber(rd.round)
+    if (roundNum === null) continue
+
+    for (const table of rd.tables) {
+      if (!table.players || table.players.length === 0) continue
+
+      const isBye = table.status === 'Bye' || table.players.length < 2
+      const playerA = table.players[0].name
+      const playerB = isBye ? null : table.players[1]?.name ?? null
+
+      const deckA = playerToDeckId.get(playerA) ?? null
+      const deckB = playerB ? (playerToDeckId.get(playerB) ?? null) : null
+
+      if (!deckA && !deckB) continue
+
+      const isDraw = !isBye && !table.winner && table.status === 'Completed'
+      const winner = isBye ? 'bye' : (table.winner ?? null)
+
+      rows.push({
+        tournament_id: tournamentId,
+        round: roundNum,
+        player_a: playerA,
+        player_b: playerB,
+        winner,
+        deck_a_id: deckA,
+        deck_b_id: deckB,
+        is_bye: isBye,
+        is_draw: isDraw,
+      })
+    }
+  }
+
+  return rows
+}
+
 async function parseJob(job: { id: number; source_url: string; raw_content: string }): Promise<void> {
-  const { meta, standings } = JSON.parse(job.raw_content) as { meta: TopdeckMeta; standings: Standing[] }
+  const { meta, standings, rounds } = JSON.parse(job.raw_content) as {
+    meta: TopdeckMeta
+    standings: Standing[]
+    rounds?: RoundData[]
+  }
 
   if (!standings || standings.length < 4) {
     throw new Error(`Too few players: ${standings?.length ?? 0}`)
@@ -89,6 +176,7 @@ async function parseJob(job: { id: number; source_url: string; raw_content: stri
 
   console.log(`[topdeck-parser] ${meta.tournamentName} (${date}) — ${standings.length} players`)
 
+  const playerToDeckId = new Map<string, string>()
   let decksParsed = 0
   for (const standing of standings) {
     if (!standing.deckObj) continue
@@ -129,10 +217,24 @@ async function parseJob(job: { id: number; source_url: string; raw_content: stri
     })
     if (dcErr) throw new Error(`Deck cards sync (${standing.id}): ${dcErr.message}`)
 
+    playerToDeckId.set(standing.name, deckId)
     decksParsed++
   }
 
   console.log(`[topdeck-parser] Parsed ${decksParsed} decks with decklists`)
+
+  // Process round-by-round match data if available
+  if (rounds && Array.isArray(rounds) && rounds.length > 0) {
+    const matchRows = buildMatchRows(rounds, tournamentId, playerToDeckId)
+
+    if (matchRows.length > 0) {
+      const { error: mErr } = await supabase
+        .from('matches')
+        .upsert(matchRows, { onConflict: 'tournament_id,round,player_a', ignoreDuplicates: true })
+      if (mErr) throw new Error(`Match upsert: ${mErr.message}`)
+      console.log(`[topdeck-parser] Inserted ${matchRows.length} match records`)
+    }
+  }
 }
 
 export async function parsePendingTopdeckJobs(): Promise<void> {

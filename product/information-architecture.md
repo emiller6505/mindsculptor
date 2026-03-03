@@ -6,7 +6,7 @@ Primary channels: Reddit, Meta ads (Facebook/Instagram), SEO. Podcasts post-MVP.
 
 **Engineering implications:**
 - Metagame section (`/data/**`) must be **public and SSR** — fully crawlable, no auth required
-- Oracle section (`/chat`) requires auth to use but landing at `/` is public
+- Oracle section (`/chat`) allows 3 anonymous queries before auth prompt; landing at `/` is always public
 - Dynamic OG images via `@vercel/og` on archetype and format pages
 - Shareable oracle result permalinks for Reddit/social virality
 - `/reports/[format]-[date]` — weekly digest as public indexed pages
@@ -88,15 +88,17 @@ Full-width chat interface. The oracle is the product.
 │    └─────────────────────────────────────────────┘      │
 │                                                         │
 │  ┌───────────────────────────────────────────────────┐  │
-│  │  5 / 5 queries today  ·  Ask the Firemind... [→] │  │
+│  │  4 queries left today  ·  Ask the Firemind... [→]│  │
 │  └───────────────────────────────────────────────────┘  │
 └─────────────────────────────────────────────────────────┘
 ```
 
-- Query counter inline with input: "5 / 5 queries today" (Casual) or "22 / 30" (Spike)
-- Unauthenticated users can see the interface but must sign in to query
+- Query counter inline with input — three states:
+  - Anonymous: "X of 3 free queries used" — after 3rd query, inline auth prompt appears below the response
+  - Casual: "X queries left today" — when limit hit, input area shows live HH:MM:SS countdown to midnight UTC reset, right-aligned next to "Go Spike →" CTA. Example: `⏱ Resets in 03:42:17 · Go Spike →`. The ticking clock creates urgency without being hostile — it's informational, but converts.
+  - Spike: "X / 30 today" — no countdown, no friction
 - Oracle responses embed inline data cards — archetype names are tappable links to `/data/[format]/[archetype]`
-- Spike CTA appears when Casual hits query limit: "You're out of queries — upgrade for 30/day"
+- Auth prompt after anonymous limit is inline, not a modal — conversation context is preserved through the Google OAuth flow
 
 **Oracle response format:**
 ```
@@ -115,10 +117,9 @@ Full-width chat interface. The oracle is the product.
 
 Archetype names in responses link directly to metagame archetype pages.
 
-**Chat history drawer (🕐 — Spike only):**
-- Full conversation list, searchable
-- Resume any past conversation
-- Casual users see the icon but get an upgrade prompt
+**Chat history drawer (🕐):**
+- Casual: read-only list of last 7 days of conversations — visible but not resumable. Upgrade prompt to unlock full history + resume.
+- Spike: full history, searchable, fully resumable
 
 ---
 
