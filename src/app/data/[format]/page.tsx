@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
+import { cn, buttonVariants, Card } from '@/components/ui'
 
 const FORMATS = ['modern', 'standard'] as const
 type Format = typeof FORMATS[number]
@@ -32,7 +33,7 @@ export default async function FormatPage({ params }: { params: Promise<{ format:
           </h1>
           <Link
             href={`/data/${other}`}
-            className="text-xs text-ash hover:text-ink border border-edge hover:border-spark/30 rounded-md px-2.5 py-1 transition-colors"
+            className={buttonVariants({ variant: 'secondary', size: 'sm' })}
           >
             Switch to {otherLabel}
           </Link>
@@ -43,7 +44,7 @@ export default async function FormatPage({ params }: { params: Promise<{ format:
       </div>
 
       {/* Coming soon */}
-      <div className="border border-edge rounded-xl bg-surface/40 p-12 text-center space-y-4">
+      <Card className="bg-surface/40 p-12 text-center space-y-4">
         <div className="text-4xl text-spark/40">◈</div>
         <h2 className="text-lg font-medium text-ink">Charts coming soon</h2>
         <p className="text-sm text-ash max-w-sm mx-auto">
@@ -52,11 +53,11 @@ export default async function FormatPage({ params }: { params: Promise<{ format:
         </p>
         <Link
           href="/chat"
-          className="inline-block mt-2 bg-spark hover:bg-spark/90 text-canvas text-sm font-medium px-5 py-2.5 rounded-xl transition-colors"
+          className={cn(buttonVariants(), 'inline-block mt-2')}
         >
           Ask the Firemind →
         </Link>
-      </div>
+      </Card>
 
     </main>
   )

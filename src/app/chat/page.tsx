@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import type { Components } from 'react-markdown'
+import { Button, Input, Card } from '@/components/ui'
 
 const SUGGESTED_PROMPTS = [
   "What's dominating Modern right now?",
@@ -58,9 +59,9 @@ const mdComponents: Components = {
 type Confidence = 'LOW' | 'MEDIUM' | 'HIGH' | 'VERY HIGH'
 
 const CONFIDENCE_COLORS: Record<Confidence, string> = {
-  'VERY HIGH': 'text-emerald-400',
+  'VERY HIGH': 'text-spark',
   'HIGH':      'text-spark',
-  'MEDIUM':    'text-yellow-400',
+  'MEDIUM':    'text-gold',
   'LOW':       'text-flame',
 }
 
@@ -187,20 +188,26 @@ function ChatPageInner() {
         <div className="max-w-3xl mx-auto px-6 py-8 space-y-8">
 
           {messages.length === 0 && (
-            <div className="pt-16 space-y-8">
-              <div className="text-center space-y-2">
-                <p className="text-ash text-sm">Ask about the current metagame, what to play, or how decks and cards perform.</p>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                {SUGGESTED_PROMPTS.map(prompt => (
-                  <button
-                    key={prompt}
-                    onClick={() => submit(prompt)}
-                    className="text-left text-sm text-ash hover:text-ink bg-surface hover:bg-edge border border-edge rounded-lg px-4 py-3 transition-colors"
-                  >
-                    {prompt}
-                  </button>
-                ))}
+            <div className="flex flex-col items-center justify-center min-h-[calc(100vh-10rem)]">
+              <div className="space-y-8 w-full max-w-lg">
+                <div className="text-center space-y-2">
+                  <p className="text-ink/75 text-sm">Ask about the current metagame, what to play, or how decks and cards perform.</p>
+                </div>
+                <div
+                  className="grid grid-cols-2 gap-3 py-16 -my-16 px-12 -mx-12"
+                  style={{ background: 'radial-gradient(ellipse at 50% 50%, rgba(79,142,247,0.10) 0%, transparent 70%)' }}
+                >
+                  {SUGGESTED_PROMPTS.map(prompt => (
+                    <Button
+                      key={prompt}
+                      variant="secondary"
+                      onClick={() => submit(prompt)}
+                      className="justify-start text-left text-ink/80 bg-surface hover:bg-edge px-4 py-3.5 hover:glow-spark-sm"
+                    >
+                      {prompt}
+                    </Button>
+                  ))}
+                </div>
               </div>
             </div>
           )}
@@ -209,9 +216,9 @@ function ChatPageInner() {
             <div key={i}>
               {msg.role === 'user' ? (
                 <div className="flex justify-end">
-                  <div className="bg-surface border border-edge text-ink rounded-2xl rounded-tr-sm px-4 py-2.5 max-w-[80%] text-sm">
+                  <Card className="rounded-2xl rounded-tr-sm px-4 py-2.5 max-w-[80%] text-sm text-ink">
                     {msg.content}
-                  </div>
+                  </Card>
                 </div>
               ) : (
                 <div className="space-y-3">
@@ -263,26 +270,22 @@ function ChatPageInner() {
 
       {/* Input bar */}
       <div className="border-t border-edge bg-canvas/80 backdrop-blur-sm flex-shrink-0">
-        <div className="max-w-3xl mx-auto px-6 py-4">
+        <div className="max-w-3xl mx-auto px-6 py-4 space-y-2">
+          {messages.length === 0 && (
+            <p className="text-xs text-ash text-center">5 queries available today</p>
+          )}
           <form onSubmit={handleFormSubmit} className="flex gap-3">
-            <input
+            <Input
               type="text"
               value={input}
               onChange={e => setInput(e.target.value)}
               placeholder="Ask the Firemind…"
               disabled={loading}
-              className="flex-1 bg-surface border border-edge rounded-xl px-4 py-2.5 text-sm text-ink
-                placeholder-ash focus:outline-none focus:border-spark/50 focus:glow-spark-sm
-                disabled:opacity-50 transition-all"
+              className="flex-1"
             />
-            <button
-              type="submit"
-              disabled={loading || !input.trim()}
-              className="bg-spark hover:bg-spark/90 disabled:opacity-40 disabled:cursor-not-allowed
-                text-canvas text-sm font-medium px-5 py-2.5 rounded-xl transition-colors"
-            >
+            <Button disabled={loading || !input.trim()}>
               Ask
-            </button>
+            </Button>
           </form>
         </div>
       </div>

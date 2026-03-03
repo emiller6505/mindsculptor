@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase-browser'
+import { Button, Card } from '@/components/ui'
 
 export default function AuthModal({ onClose }: { onClose: () => void }) {
   const overlayRef = useRef<HTMLDivElement>(null)
@@ -30,12 +31,13 @@ export default function AuthModal({ onClose }: { onClose: () => void }) {
       className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm"
       onClick={(e) => { if (e.target === overlayRef.current) onClose() }}
     >
-      <div className="w-full max-w-sm rounded-xl border border-edge bg-canvas p-8 shadow-2xl">
+      <Card className="w-full max-w-sm bg-canvas p-8 shadow-2xl">
         <h2 className="text-lg font-semibold text-ink mb-6 text-center">Sign in to Firemind</h2>
 
-        <button
+        <Button
+          variant="secondary"
           onClick={signInWithGoogle}
-          className="w-full flex items-center justify-center gap-3 rounded-lg border border-edge bg-surface px-4 py-3 text-sm font-medium text-ink hover:bg-edge transition-colors"
+          className="w-full gap-3 py-3 bg-surface text-ink hover:bg-edge"
         >
           <svg className="h-5 w-5" viewBox="0 0 24 24">
             <path
@@ -56,15 +58,12 @@ export default function AuthModal({ onClose }: { onClose: () => void }) {
             />
           </svg>
           Sign in with Google
-        </button>
+        </Button>
 
-        <button
-          onClick={onClose}
-          className="mt-4 w-full text-sm text-ash hover:text-ink transition-colors py-2"
-        >
+        <Button variant="ghost" onClick={onClose} className="w-full mt-4">
           Cancel
-        </button>
-      </div>
+        </Button>
+      </Card>
     </div>
   )
 }

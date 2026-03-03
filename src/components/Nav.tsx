@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import type { User } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase-browser'
+import { Button } from '@/components/ui'
 import AuthModal from './AuthModal'
 
 export default function Nav() {
@@ -46,8 +47,8 @@ export default function Nav() {
           </Link>
 
           <div className="flex items-center gap-1">
-            <NavLink href="/chat" active={path.startsWith('/chat')}>Oracle</NavLink>
-            <NavLink href="/data" active={path.startsWith('/data')}>Metagame</NavLink>
+            <NavLink href="/chat" active={path.startsWith('/chat')}>Chat</NavLink>
+            <NavLink href="/data" active={path.startsWith('/data')}>Data</NavLink>
           </div>
 
           <div className="ml-auto flex items-center gap-2">
@@ -56,20 +57,14 @@ export default function Nav() {
                 <span className="text-sm text-ash truncate max-w-[200px]">
                   {user.email}
                 </span>
-                <button
-                  onClick={signOut}
-                  className="text-sm text-ash hover:text-ink transition-colors px-3 py-1.5"
-                >
+                <Button variant="ghost" size="sm" onClick={signOut}>
                   Sign out
-                </button>
+                </Button>
               </>
             ) : (
-              <button
-                onClick={() => setShowAuth(true)}
-                className="text-sm text-ash hover:text-ink transition-colors px-3 py-1.5"
-              >
+              <Button variant="ghost" size="sm" onClick={() => setShowAuth(true)}>
                 Sign in
-              </button>
+              </Button>
             )}
             <button className="text-sm font-medium px-3 py-1.5 rounded-md border border-spark/20 bg-spark/10 text-spark hover:bg-spark/20 transition-colors">
               Go Spike ↑

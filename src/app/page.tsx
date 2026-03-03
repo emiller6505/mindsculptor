@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { Button, buttonVariants, Input } from '@/components/ui'
 
 const SUGGESTED_PROMPTS = [
   "What's dominating Modern?",
@@ -27,7 +28,7 @@ const STANDARD_META = [
 ]
 
 function MetaBar({ name, share, trend }: { name: string; share: number; trend: string }) {
-  const trendColor = trend.includes('↑') ? 'text-emerald-400' : trend === '↓' ? 'text-flame' : 'text-ash'
+  const trendColor = trend.includes('↑') ? 'text-spark' : trend === '↓' ? 'text-flame' : 'text-ash'
   return (
     <div className="flex items-center gap-3 py-1.5">
       <div className="w-full max-w-[120px] bg-edge rounded-full h-1.5 shrink-0">
@@ -66,40 +67,35 @@ export default function LandingPage() {
         <div className="space-y-3">
           <h1 className="text-3xl font-semibold tracking-tight text-ink">
             Know what&apos;s winning.<br />
-            <span className="text-ash font-normal">Before you register.</span>
+            <span className="text-ink/70 font-normal">Before you register.</span>
           </h1>
         </div>
 
         {/* Oracle input */}
         <form onSubmit={handleSubmit} className="flex gap-3">
-          <input
+          <Input
             type="text"
             value={input}
             onChange={e => setInput(e.target.value)}
             placeholder="Ask about the metagame…"
-            className="flex-1 bg-surface border border-edge rounded-xl px-4 py-3 text-sm text-ink
-              placeholder-ash focus:outline-none focus:border-spark/50 focus:glow-spark-sm transition-all"
+            className="flex-1"
           />
-          <button
-            type="submit"
-            disabled={!input.trim()}
-            className="bg-spark hover:bg-spark/90 disabled:opacity-40 disabled:cursor-not-allowed
-              text-canvas text-sm font-medium px-6 py-3 rounded-xl transition-colors shrink-0"
-          >
+          <Button type="submit" disabled={!input.trim()} className="shrink-0">
             Ask →
-          </button>
+          </Button>
         </form>
 
         {/* Suggested prompts */}
         <div className="flex flex-wrap gap-2">
           {SUGGESTED_PROMPTS.map(prompt => (
-            <button
+            <Button
               key={prompt}
+              variant="secondary"
+              size="sm"
               onClick={() => handlePrompt(prompt)}
-              className="text-sm text-ash hover:text-ink border border-edge hover:border-spark/30 rounded-lg px-3 py-1.5 transition-colors"
             >
               {prompt}
-            </button>
+            </Button>
           ))}
         </div>
       </div>
@@ -108,7 +104,7 @@ export default function LandingPage() {
       <div className="border-t border-edge" />
 
       {/* Live meta snapshot — placeholder until /data is wired */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+      <div className="bg-surface border border-edge rounded-xl p-8 grid grid-cols-1 md:grid-cols-2 gap-10">
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-xs font-semibold text-ash uppercase tracking-widest">Modern</h2>
@@ -131,16 +127,10 @@ export default function LandingPage() {
 
       {/* CTAs */}
       <div className="flex items-center gap-4">
-        <Link
-          href="/chat"
-          className="bg-spark hover:bg-spark/90 text-canvas text-sm font-medium px-5 py-2.5 rounded-xl transition-colors"
-        >
+        <Link href="/chat" className={buttonVariants()}>
           Ask the Firemind — it&apos;s free
         </Link>
-        <Link
-          href="/data"
-          className="text-sm text-ash hover:text-ink border border-edge hover:border-spark/30 rounded-xl px-5 py-2.5 transition-colors"
-        >
+        <Link href="/data" className={buttonVariants({ variant: 'secondary' })}>
           See metagame charts →
         </Link>
       </div>
