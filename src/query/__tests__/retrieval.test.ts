@@ -13,6 +13,8 @@ describe('retrieveContext', () => {
     vi.mocked(supabase.from).mockReturnValue(
       makeChainable({ data: [DECK_FIXTURE], error: null })
     )
+    vi.mocked(supabase.rpc).mockResolvedValueOnce({ data: [], error: null } as never) // lookup_card_prices
+    vi.mocked(supabase.rpc).mockResolvedValueOnce({ data: null, error: null } as never) // resolveConfidence
 
     const result = await retrieveContext(INTENT_FIXTURE)
 
@@ -33,6 +35,8 @@ describe('retrieveContext', () => {
     vi.mocked(supabase.from).mockReturnValue(
       makeChainable({ data: twoTournaments, error: null })
     )
+    vi.mocked(supabase.rpc).mockResolvedValueOnce({ data: [], error: null } as never) // lookup_card_prices
+    vi.mocked(supabase.rpc).mockResolvedValueOnce({ data: null, error: null } as never) // resolveConfidence
 
     const result = await retrieveContext(INTENT_FIXTURE)
 
@@ -51,18 +55,19 @@ describe('retrieveContext', () => {
   })
 
   it('includes card_info when intent has a card', async () => {
-    // Call order: from('decks'), from('cards' ilike), from('cards' prices), from('metagame_snapshots')
-    // rpc('count_card_appearances') is called once for the card lookup
+    // from() calls: fetchTopDecks (decks), fetchCardInfo (cards ilike)
+    // rpc() calls: lookup_card_prices, count_card_appearances, resolveConfidence (metagame_snapshots)
     vi.mocked(supabase.from)
       .mockImplementationOnce(() => makeChainable({ data: [DECK_FIXTURE], error: null }))  // fetchTopDecks: decks
       .mockImplementationOnce(() => makeChainable(                                          // fetchCardInfo: cards (ilike, maybeSingle)
         { data: [], error: null },
         { data: CARD_FIXTURE, error: null },
       ))
-      .mockImplementationOnce(() => makeChainable({ data: [], error: null }))               // attachDeckCosts: cards prices
-      .mockImplementationOnce(() => makeChainable({ data: null, error: null }))             // metagame_snapshots (resolveConfidence)
+      .mockImplementation(() => makeChainable({ data: [], error: null }))                   // DFC fallback + resolveConfidence
 
-    vi.mocked(supabase.rpc).mockResolvedValueOnce({ data: 17, error: null } as never)      // count_card_appearances
+    vi.mocked(supabase.rpc)
+      .mockResolvedValueOnce({ data: 17, error: null } as never)                           // count_card_appearances (runs in parallel with fetchTopDecks)
+      .mockResolvedValueOnce({ data: [], error: null } as never)                           // lookup_card_prices (attachDeckCosts)
 
     const intent = { ...INTENT_FIXTURE, question_type: 'card_question' as const, card: 'Lightning Bolt' }
     const result = await retrieveContext(intent)

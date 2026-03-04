@@ -202,27 +202,69 @@ async function fetchTopDecks(
   return decks
 }
 
-async function fetchPriceChunk(names: string[]): Promise<{ name: string; usd: number | null; tix: number | null }[]> {
-  const { data, error } = await supabase.from('cards').select('name, usd, tix').in('name', names)
-  if (error) console.warn(`[retrieval] price chunk lookup failed: ${error.message}`)
-  return data ?? []
+async function lookupPrices(names: string[]): Promise<{ name: string; usd: number | null; tix: number | null }[]> {
+  // Uses lookup_card_prices RPC which does DISTINCT ON (name) in SQL.
+  // This avoids the PostgREST row-limit issue where cards with many printings
+  // (basic lands ~900 rows each) silently drop other names from the result set.
+  const { data, error } = await supabase.rpc('lookup_card_prices', { p_names: names })
+  if (error) console.warn(`[retrieval] lookup_card_prices failed: ${error.message}`)
+  return (data as { name: string; usd: number | null; tix: number | null }[]) ?? []
 }
 
 async function attachDeckCosts(decks: RawDeck[]): Promise<DeckSummary[]> {
   if (decks.length === 0) return decks.map(d => ({ ...d, deck_cost_usd: null, deck_cost_tix: null }))
 
   const allNames = [...new Set(decks.flatMap(d => d.mainboard.map(c => c.name)))]
-  // Chunk to stay well under PostgREST's ~8KB URL limit
-  const CHUNK = 100
-  const chunks: string[][] = []
-  for (let i = 0; i < allNames.length; i += CHUNK) chunks.push(allNames.slice(i, i + CHUNK))
-  const rows = (await Promise.all(chunks.map(fetchPriceChunk))).flat()
+  const rows = await lookupPrices(allNames)
 
   if (rows.length === 0) console.warn('[retrieval] attachDeckCosts: no price data returned')
 
   const priceMap = new Map<string, { usd: number | null; tix: number | null }>()
   for (const row of rows) {
     priceMap.set(row.name, { usd: row.usd ?? null, tix: row.tix ?? null })
+  }
+
+  // Name mismatches between MTGO and Scryfall:
+  // 1. DFC: MTGO uses front face ("Fable of the Mirror-Breaker"), Scryfall stores "Front // Back"
+  // 2. Split cards: MTGO uses "/" ("Wear/Tear"), Scryfall uses " // " ("Wear // Tear")
+  const missingNames = allNames.filter(n => !priceMap.has(n))
+  if (missingNames.length > 0) {
+    // Split card normalization: try "Name/Name" → "Name // Name"
+    const splitNames = missingNames.filter(n => n.includes('/') && !n.includes(' // '))
+    if (splitNames.length > 0) {
+      const normalizedSplitNames = splitNames.map(n => n.replace('/', ' // '))
+      const splitRows = await lookupPrices(normalizedSplitNames)
+      for (const row of splitRows) {
+        const originalName = splitNames[normalizedSplitNames.indexOf(row.name)]
+        if (originalName) priceMap.set(originalName, { usd: row.usd ?? null, tix: row.tix ?? null })
+      }
+    }
+
+    // DFC fallback: MTGO may use front-face or back-face names, Scryfall stores "Front // Back".
+    // Try both "name // %" (front-face) and "% // name" (back-face) patterns.
+    const stillMissing = missingNames.filter(n => !priceMap.has(n))
+    if (stillMissing.length > 0) {
+      const dfcResults = await Promise.all(
+        stillMissing.map(async name => {
+          const { data: front } = await supabase.from('cards').select('name, usd, tix').like('name', `${name} // %`).limit(10)
+          if (front && front.length > 0) return front
+          const { data: back } = await supabase.from('cards').select('name, usd, tix').like('name', `% // ${name}`).limit(10)
+          return back ?? []
+        })
+      )
+      for (let i = 0; i < stillMissing.length; i++) {
+        const original = stillMissing[i]!
+        for (const row of dfcResults[i]!) {
+          if (!row.name?.includes(' // ')) continue
+          const existing = priceMap.get(original)
+          priceMap.set(original, {
+            usd: existing?.usd ?? row.usd ?? null,
+            tix: existing?.tix ?? row.tix ?? null,
+          })
+          break
+        }
+      }
+    }
   }
 
   return decks.map(d => {
@@ -232,9 +274,6 @@ async function attachDeckCosts(decks: RawDeck[]): Promise<DeckSummary[]> {
       if (p?.usd != null) { usdTotal += card.qty * p.usd; usdNames++ }
       if (p?.tix != null) { tixTotal += card.qty * p.tix; tixNames++ }
     }
-    // Require ≥75% of distinct mainboard card names to have prices.
-    // Name-based coverage catches missing expensive cards (e.g. 4x fetch land = 1 name)
-    // better than quantity-based coverage (4 copies counted as 4 of 60 quantities).
     const minCoverage = d.mainboard.length * 0.75
     return {
       ...d,

@@ -241,7 +241,7 @@ function ChatPageInner() {
                       prose-li:my-0.5
                       prose-table:text-sm prose-th:text-ink/70 prose-td:text-ink/60
                       prose-code:text-spark prose-code:bg-surface prose-code:px-1 prose-code:rounded">
-                      <ReactMarkdown remarkPlugins={[remarkGfm]} components={mdComponents}>
+                      <ReactMarkdown remarkPlugins={[[remarkGfm, { singleTilde: false }]]} components={mdComponents}>
                         {msg.content}
                       </ReactMarkdown>
                     </div>

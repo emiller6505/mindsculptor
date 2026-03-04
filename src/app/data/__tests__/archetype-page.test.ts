@@ -4,7 +4,12 @@ vi.mock('../../../lib/supabase-static', () => ({
   createStaticClient: vi.fn(),
 }))
 
+vi.mock('../../../lib/supabase-server', () => ({
+  createClient: vi.fn(),
+}))
+
 import { createStaticClient } from '../../../lib/supabase-static'
+import { createClient } from '../../../lib/supabase-server'
 import {
   fetchArchetype,
   fetchLatestSnapshot,
@@ -91,6 +96,7 @@ function makeChainable(result: PgResult) {
 function mockSupabase(result: PgResult) {
   const client = { from: vi.fn(() => makeChainable(result)) }
   vi.mocked(createStaticClient).mockReturnValue(client as never)
+  vi.mocked(createClient).mockResolvedValue(client as never)
   return client
 }
 

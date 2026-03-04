@@ -7,8 +7,6 @@ import {
   YAxis,
   Tooltip,
   ResponsiveContainer,
-  ScatterChart,
-  Scatter,
 } from 'recharts'
 import { useState } from 'react'
 
@@ -71,30 +69,17 @@ export function ShareOverTime({ data }: { data: DataPoint[] }) {
       </div>
 
       {fewPoints ? (
-        <div className="flex flex-col items-center justify-center h-[300px]">
-          <div className="w-full h-[200px]">
-            <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
-              <ScatterChart margin={{ top: 10, right: 10, bottom: 0, left: 0 }}>
-                <XAxis
-                  dataKey="window_end"
-                  tick={{ fill: '#4A5878', fontSize: 11 }}
-                  axisLine={false}
-                  tickLine={false}
-                />
-                <YAxis
-                  tick={{ fill: '#4A5878', fontSize: 11 }}
-                  tickFormatter={v => `${v}%`}
-                  axisLine={false}
-                  tickLine={false}
-                  width={40}
-                />
-                <Tooltip content={<CustomTooltip />} />
-                <Scatter data={filtered} fill="#4F8EF7" />
-              </ScatterChart>
-            </ResponsiveContainer>
+        <div className="flex flex-col items-center justify-center py-10 space-y-4">
+          <div className="flex items-baseline gap-6">
+            {filtered.map(d => (
+              <div key={d.window_end} className="text-center">
+                <span className="text-2xl font-bold text-ink">{d.meta_share.toFixed(1)}%</span>
+                <p className="text-xs text-ash mt-1">{d.window_end}</p>
+              </div>
+            ))}
           </div>
-          <p className="text-xs text-ash italic text-center mt-3">
-            More data accumulates with each event
+          <p className="text-xs text-ash italic">
+            Chart appears after a few more events
           </p>
         </div>
       ) : (

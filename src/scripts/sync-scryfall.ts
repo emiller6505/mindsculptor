@@ -26,6 +26,7 @@ interface ScryfallCard {
   id: string
   oracle_id: string
   name: string
+  printed_name?: string
   oracle_text?: string
   type_line?: string
   mana_cost?: string
@@ -39,6 +40,13 @@ interface ScryfallCard {
   image_uris?: { normal?: string }
   card_faces?: Array<{ image_uris?: { normal?: string }; oracle_text?: string }>
   prices?: { usd?: string | null; tix?: string | null }
+}
+
+interface AliasRow {
+  alias: string
+  canonical: string
+  oracle_id: string
+  source: string
 }
 
 async function getBulkDownloadUrl(): Promise<string> {
@@ -89,6 +97,12 @@ async function upsertBatch(batch: ReturnType<typeof toCardRow>[]) {
   if (error) throw new Error(`Upsert error: ${error.message}`)
 }
 
+function chunk<T>(arr: T[], size: number): T[][] {
+  const result: T[][] = []
+  for (let i = 0; i < arr.length; i += size) result.push(arr.slice(i, i + size))
+  return result
+}
+
 async function main() {
   console.log('Fetching Scryfall bulk data URL...')
   const url = await getBulkDownloadUrl()
@@ -104,6 +118,7 @@ async function main() {
   let batch: ReturnType<typeof toCardRow>[] = []
   let upserted = 0
   let total = 0
+  const aliases = new Map<string, AliasRow>()
 
   for await (const { value } of pipeline) {
     const card = value as ScryfallCard
@@ -111,6 +126,16 @@ async function main() {
     if (!isRelevant(card)) continue
 
     batch.push(toCardRow(card))
+
+    if (card.printed_name && card.printed_name !== card.name) {
+      aliases.set(card.printed_name, {
+        alias: card.printed_name,
+        canonical: card.name,
+        oracle_id: card.oracle_id,
+        source: 'scryfall_printed_name',
+      })
+    }
+
     if (batch.length >= BATCH_SIZE) {
       await upsertBatch(batch)
       upserted += batch.length
@@ -124,7 +149,19 @@ async function main() {
     upserted += batch.length
   }
 
-  console.log(`\nScryfall sync complete. ${upserted} cards upserted from ${total} total in export.`)
+  // Upsert card name aliases
+  if (aliases.size > 0) {
+    const aliasBatches = chunk([...aliases.values()], BATCH_SIZE)
+    for (const ab of aliasBatches) {
+      const { error } = await supabase
+        .from('card_name_aliases')
+        .upsert(ab, { onConflict: 'alias' })
+      if (error) throw new Error(`Alias upsert error: ${error.message}`)
+    }
+    console.log(`\nUpserted ${aliases.size} card name aliases`)
+  }
+
+  console.log(`Scryfall sync complete. ${upserted} cards upserted from ${total} total in export.`)
 }
 
 main().catch(err => {

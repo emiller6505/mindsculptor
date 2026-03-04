@@ -1,4 +1,5 @@
 import { createStaticClient } from '@/lib/supabase-static'
+import { createClient } from '@/lib/supabase-server'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -40,7 +41,7 @@ export type RecentResult = {
 // ── Queries ──────────────────────────────────────────────────────────────────
 
 export async function fetchArchetype(archetypeId: string): Promise<Archetype | null> {
-  const supabase = createStaticClient()
+  const supabase = await createClient()
   const { data, error } = await supabase
     .from('archetypes')
     .select('id, name, format, tier, description, key_cards')
@@ -52,7 +53,7 @@ export async function fetchArchetype(archetypeId: string): Promise<Archetype | n
 }
 
 export async function fetchLatestSnapshot(archetypeId: string): Promise<LatestSnapshot | null> {
-  const supabase = createStaticClient()
+  const supabase = await createClient()
   const { data, error } = await supabase
     .from('metagame_snapshots')
     .select('meta_share, trend_delta, top8_count, total_entries, sample_size, confidence, window_end, window_start')
@@ -67,7 +68,7 @@ export async function fetchLatestSnapshot(archetypeId: string): Promise<LatestSn
 }
 
 export async function fetchShareHistory(archetypeId: string): Promise<SharePoint[]> {
-  const supabase = createStaticClient()
+  const supabase = await createClient()
   const { data, error } = await supabase
     .from('metagame_snapshots')
     .select('meta_share, window_end, window_start')
@@ -95,7 +96,7 @@ export async function fetchShareHistory(archetypeId: string): Promise<SharePoint
 }
 
 export async function fetchHasMatches(): Promise<boolean> {
-  const supabase = createStaticClient()
+  const supabase = await createClient()
   const { count, error } = await supabase
     .from('matches')
     .select('*', { count: 'exact', head: true })
@@ -105,7 +106,7 @@ export async function fetchHasMatches(): Promise<boolean> {
 }
 
 export async function fetchRecentResults(archetypeId: string): Promise<RecentResult[]> {
-  const supabase = createStaticClient()
+  const supabase = await createClient()
   const { data, error } = await supabase
     .from('deck_archetypes')
     .select(`
