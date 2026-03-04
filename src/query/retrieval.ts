@@ -44,12 +44,20 @@ export interface CardInfo {
   appearances: number  // count of recent deck_cards rows
 }
 
+export interface CardGlossaryEntry {
+  name: string
+  mana_cost: string | null
+  type_line: string | null
+  oracle_text: string | null
+}
+
 export interface RetrievedData {
   format: string | null
   window_days: number
   tournaments_count: number
   top_decks: DeckSummary[]
   card_info: CardInfo | null
+  card_glossary: CardGlossaryEntry[]
   confidence: 'LOW' | 'MEDIUM' | 'HIGH' | 'VERY HIGH'
 }
 
@@ -69,12 +77,13 @@ export async function retrieveContext(intent: Intent, trace?: Trace): Promise<Re
   ])
 
   const tournaments_count = new Set(rawDecks.map(d => d.tournament_name)).size
-  const [topDecks, confidence] = await Promise.all([
+  const [topDecks, confidence, cardGlossary] = await Promise.all([
     time('attachDeckCosts', () => attachDeckCosts(rawDecks)),
     time('resolveConfidence', () => resolveConfidence(intent.format, cutoff, rawDecks.length)),
+    time('fetchCardGlossary', () => fetchCardGlossary(rawDecks)),
   ])
 
-  return { format: intent.format, window_days, tournaments_count, top_decks: topDecks, card_info: cardInfo, confidence }
+  return { format: intent.format, window_days, tournaments_count, top_decks: topDecks, card_info: cardInfo, card_glossary: cardGlossary, confidence }
 }
 
 // Pull the best confidence from metagame_snapshots for this format/window.
@@ -286,6 +295,82 @@ async function attachDeckCosts(decks: RawDeck[]): Promise<DeckSummary[]> {
       deck_cost_tix: tixNames >= minCoverage ? Math.round(tixTotal * 100) / 100 : null,
     }
   })
+}
+
+async function fetchCardGlossary(
+  decks: Array<{ mainboard: { name: string; qty: number }[]; sideboard: { name: string; qty: number }[] }>,
+): Promise<CardGlossaryEntry[]> {
+  try {
+    const nameSet = new Set<string>()
+    for (const d of decks) {
+      for (const c of d.mainboard) nameSet.add(c.name)
+      for (const c of d.sideboard) nameSet.add(c.name)
+    }
+    const names = [...nameSet]
+    if (names.length === 0) return []
+
+    const { data, error } = await supabase
+      .from('cards')
+      .select('name, mana_cost, type_line, oracle_text')
+      .in('name', names)
+
+    if (error) {
+      console.warn(`[retrieval] fetchCardGlossary failed: ${error.message}`)
+      return []
+    }
+
+    const glossary = new Map<string, CardGlossaryEntry>()
+    const foundNames = new Set<string>()
+    for (const row of data ?? []) {
+      foundNames.add(row.name)
+      if (!row.oracle_text) continue
+      if (!glossary.has(row.name)) glossary.set(row.name, row as CardGlossaryEntry)
+    }
+
+    // Handle name mismatches: split cards (Wear/Tear → Wear // Tear) and DFCs (front face LIKE)
+    // Only try fallback for names not found in DB at all (not for cards with null oracle_text like basic lands)
+    const missingNames = names.filter(n => !foundNames.has(n))
+    if (missingNames.length > 0) {
+      const splitNames = missingNames.filter(n => n.includes('/') && !n.includes(' // '))
+      if (splitNames.length > 0) {
+        const normalized = splitNames.map(n => n.replace('/', ' // '))
+        const { data: splitData } = await supabase
+          .from('cards')
+          .select('name, mana_cost, type_line, oracle_text')
+          .in('name', normalized)
+
+        for (const row of splitData ?? []) {
+          if (!row.oracle_text) continue
+          const original = splitNames[normalized.indexOf(row.name)]
+          if (original && !glossary.has(original)) glossary.set(original, row as CardGlossaryEntry)
+        }
+      }
+
+      const stillMissing = missingNames.filter(n => !glossary.has(n))
+      if (stillMissing.length > 0) {
+        const dfcResults = await Promise.all(
+          stillMissing.map(async name => {
+            const { data: front } = await supabase
+              .from('cards')
+              .select('name, mana_cost, type_line, oracle_text')
+              .like('name', `${name} // %`)
+              .limit(1)
+            return { originalName: name, row: front?.[0] ?? null }
+          })
+        )
+        for (const { originalName, row } of dfcResults) {
+          if (row?.oracle_text && !glossary.has(originalName)) {
+            glossary.set(originalName, row as CardGlossaryEntry)
+          }
+        }
+      }
+    }
+
+    return [...glossary.values()]
+  } catch (err) {
+    console.warn('[retrieval] fetchCardGlossary error:', err)
+    return []
+  }
 }
 
 function filterByArchetypeHint(decks: RawDeck[], archetypes: string[]): RawDeck[] {

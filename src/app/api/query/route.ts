@@ -4,6 +4,7 @@ import type { ConversationMessage } from '@/query/index'
 import { cacheGet, cacheSet } from '@/lib/query-cache'
 import type { QueryResponse } from '@/query/index'
 import { createClient } from '@/lib/supabase-server'
+import { parseDecklist, validateDecklist, formatValidationWarning } from '@/query/decklist'
 
 const MAX_HISTORY = 6
 const DAILY_LIMIT = 10
@@ -80,6 +81,15 @@ export async function POST(req: NextRequest) {
         const encoder = new TextEncoder()
         controller.enqueue(encoder.encode(sseEvent('meta', { intent: cached.intent, data: cached.data, rate_limit: rateLimit })))
         controller.enqueue(encoder.encode(sseEvent('delta', { text: cached.answer })))
+
+        const parsed = parseDecklist(cached.answer)
+        if (parsed) {
+          const errors = validateDecklist(parsed.main, parsed.side)
+          if (errors.length > 0) {
+            controller.enqueue(encoder.encode(sseEvent('decklist_warning', { errors, message: formatValidationWarning(errors) })))
+          }
+        }
+
         controller.enqueue(encoder.encode(sseEvent('done', {})))
         controller.close()
       },
@@ -108,6 +118,14 @@ export async function POST(req: NextRequest) {
             fullAnswer += chunk
             controller.enqueue(encoder.encode(sseEvent('delta', { text: chunk })))
           }
+          const parsed = parseDecklist(fullAnswer)
+          if (parsed) {
+            const errors = validateDecklist(parsed.main, parsed.side)
+            if (errors.length > 0) {
+              controller.enqueue(encoder.encode(sseEvent('decklist_warning', { errors, message: formatValidationWarning(errors) })))
+            }
+          }
+
           controller.enqueue(encoder.encode(sseEvent('done', {})))
 
           cacheSet(key, { answer: fullAnswer, intent: result.intent, data: result.data })

@@ -1,5 +1,5 @@
 import type { Intent } from './intent'
-import type { RetrievedData, DeckSummary } from './retrieval'
+import type { RetrievedData, DeckSummary, CardGlossaryEntry } from './retrieval'
 import { rcqPromptNote } from '../lib/rcq-schedule'
 
 export function assembleContext(intent: Intent, data: RetrievedData): string {
@@ -21,6 +21,10 @@ export function assembleContext(intent: Intent, data: RetrievedData): string {
     if (c.type_line) lines.push(`Type: ${c.type_line}`)
     if (c.oracle_text) lines.push(`Text: ${c.oracle_text}`)
     lines.push(`Recent competitive appearances (top-32): ${c.appearances}`)
+  }
+
+  if (data.card_glossary.length > 0) {
+    lines.push(`\n${formatCardGlossary(data.card_glossary)}`)
   }
 
   if (data.top_decks.length > 0) {
@@ -49,6 +53,18 @@ function formatDeck(deck: DeckSummary): string {
   return `${header}\n  Mainboard: ${main}${side}`
 }
 
+function formatCardGlossary(glossary: CardGlossaryEntry[]): string {
+  const sorted = [...glossary].sort((a, b) => a.name.localeCompare(b.name))
+  const lines = ['=== Card Reference ===']
+  for (const card of sorted) {
+    const mana = card.mana_cost ? ` [${card.mana_cost}]` : ''
+    const type = card.type_line ? ` — ${card.type_line}` : ''
+    const text = card.oracle_text ? `: ${card.oracle_text}` : ''
+    lines.push(`${card.name}${mana}${type}${text}`)
+  }
+  return lines.join('\n')
+}
+
 const RESPONSE_SYSTEM_BASE = `You are Firemind, a Magic: the Gathering metagame oracle powered by real tournament data.
 
 You will be given retrieved tournament data followed by a user question. Answer based only on the provided data — do not invent results or cards.
@@ -70,10 +86,32 @@ Guidelines:
     \`\`\`
 - Sideboard data is only available for some sources. If a deck's sideboard shows "[not available for this source]", omit the Sideboard section entirely and note that sideboard data is not published by that source. Never invent sideboard cards.
 - If the data is sparse or the question is outside the available data window, say so explicitly.
+- Card effects: A Card Reference section lists the exact oracle text for cards in the data set. When explaining what a card does or why it is included, use the oracle text from the Card Reference. Do not describe card effects based on the card's name alone.
 - Do not fabricate cards, placements, or results.
 - Do not use emojis.
 - When the user asks about budget, affordability, or cheapest options: rank decks by their paper cost or tix cost shown in the deck header, whichever is relevant. If cost data is absent for a deck, note that prices weren't available.
-- RCQ format awareness: use the current RCQ season format noted below when answering questions about RCQs. If the user asks about RCQs but the format is ambiguous and not clear from context, ask them to clarify which format they mean before answering.`
+- RCQ format awareness: use the current RCQ season format noted below when answering questions about RCQs. If the user asks about RCQs but the format is ambiguous and not clear from context, ask them to clarify which format they mean before answering.
+
+## Deck Construction Rules
+
+When generating any decklist, you MUST follow these rules. Violations are illegal and will confuse users.
+
+COPY LIMIT: A maximum of 4 copies of any card may appear across the combined mainboard + sideboard. Count copies from BOTH zones together before finalizing. Exception: basic lands (Plains, Island, Swamp, Mountain, Forest, and their Snow-Covered and full-art variants) have no copy limit.
+
+CORRECT:
+  Main: 4x Shock
+  Side: 2x Shock        <- total 6... ILLEGAL
+
+  Main: 4x Shock
+  Side: 0x Shock        <- total 4, legal
+
+DECK SIZE: Standard — minimum 60 main, maximum 15 sideboard. Modern — same.
+
+CARD EXISTENCE: Only generate real Magic cards that exist in print. If you are not certain a card exists and is legal in the format, do not include it. It is better to use a placeholder comment like "// [add your preferred removal here]" than to invent a card name.
+
+FORMAT LEGALITY: Only include cards legal in the format the user is asking about. Do not include banned cards.
+
+Before outputting any decklist, mentally count total copies of each non-basic card across main + side. If any card exceeds 4, reduce the sideboard count first.`
 
 export function buildResponseSystem(): string {
   return `${RESPONSE_SYSTEM_BASE}\n\n${rcqPromptNote()}`

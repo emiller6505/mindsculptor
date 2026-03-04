@@ -138,6 +138,7 @@ interface Message {
     decks_analyzed: number
     confidence?: Confidence
     remaining?: number | null
+    decklist_warning?: string | null
   }
 }
 
@@ -365,6 +366,7 @@ function ChatPageInner() {
       let displayed = ''
       let messageAdded = false
       let streamDone = false
+      let decklistWarning: string | null = null
       const CHARS_PER_TICK = 2
       const TICK_MS = 12
 
@@ -436,6 +438,8 @@ function ChatPageInner() {
                     return updated
                   })
                 }
+              } else if (currentEvent === 'decklist_warning') {
+                decklistWarning = payload.message ?? null
               } else if (currentEvent === 'done') {
                 // Flush remaining chars immediately then attach meta
                 displayed += charQueue
@@ -470,6 +474,7 @@ function ChatPageInner() {
                           decks_analyzed: (metaPayload.data?.top_decks as unknown[])?.length ?? 0,
                           confidence: metaPayload.data?.confidence as Confidence | undefined,
                           remaining: queryRemaining as number | null,
+                          decklist_warning: decklistWarning,
                         },
                       } : {}),
                     }
@@ -616,6 +621,12 @@ function ChatPageInner() {
                         </span>
                       )}
                     </p>
+                  )}
+                  {msg.meta?.decklist_warning && (
+                    <div className="mt-3 pl-4 text-xs text-flame flex items-start gap-2 whitespace-pre-line">
+                      <span>⚠</span>
+                      <span>{msg.meta.decklist_warning}</span>
+                    </div>
                   )}
                 </div>
               )}

@@ -10,6 +10,7 @@ function makeData(overrides: Partial<RetrievedData> = {}): RetrievedData {
     tournaments_count: 2,
     top_decks: [DECK_SUMMARY_FIXTURE],
     card_info: null,
+    card_glossary: [],
     confidence: 'HIGH',
     ...overrides,
   }
@@ -78,5 +79,36 @@ describe('assembleContext', () => {
     const ctx = assembleContext(INTENT_FIXTURE, makeData())
 
     expect(ctx).not.toContain('Query Framing')
+  })
+
+  it('renders Card Reference when glossary is non-empty', () => {
+    const ctx = assembleContext(INTENT_FIXTURE, makeData({
+      card_glossary: [
+        { name: 'Lightning Bolt', mana_cost: '{R}', type_line: 'Instant', oracle_text: 'Lightning Bolt deals 3 damage to any target.' },
+      ],
+    }))
+
+    expect(ctx).toContain('=== Card Reference ===')
+    expect(ctx).toContain('Lightning Bolt [{R}] — Instant: Lightning Bolt deals 3 damage to any target.')
+  })
+
+  it('omits Card Reference when glossary is empty', () => {
+    const ctx = assembleContext(INTENT_FIXTURE, makeData({ card_glossary: [] }))
+
+    expect(ctx).not.toContain('Card Reference')
+  })
+
+  it('renders Card Reference before Top Decks', () => {
+    const ctx = assembleContext(INTENT_FIXTURE, makeData({
+      card_glossary: [
+        { name: 'Goblin Guide', mana_cost: '{R}', type_line: 'Creature — Goblin Scout', oracle_text: 'Haste\nWhenever Goblin Guide attacks, defending player reveals the top card of their library. If it\'s a land card, that player puts it into their hand.' },
+      ],
+    }))
+
+    const refIdx = ctx.indexOf('Card Reference')
+    const decksIdx = ctx.indexOf('Top Decks')
+    expect(refIdx).toBeGreaterThan(-1)
+    expect(decksIdx).toBeGreaterThan(-1)
+    expect(refIdx).toBeLessThan(decksIdx)
   })
 })
