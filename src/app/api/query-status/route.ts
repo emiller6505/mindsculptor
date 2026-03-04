@@ -1,13 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase-server'
-
-const DAILY_LIMIT = 10
-
-function getResetsAt(): string {
-  const now = new Date()
-  const tomorrow = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1))
-  return tomorrow.toISOString()
-}
+import { USER_LIMIT, getResetsAt } from '@/lib/rate-limit-constants'
 
 export async function GET() {
   const supabase = await createClient()
@@ -27,7 +20,7 @@ export async function GET() {
 
   const used = row?.count ?? 0
   return NextResponse.json({
-    remaining: Math.max(0, DAILY_LIMIT - used),
+    remaining: Math.max(0, USER_LIMIT - used),
     resets_at: getResetsAt(),
   })
 }

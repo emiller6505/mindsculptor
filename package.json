@@ -15,6 +15,7 @@
     "cluster:manage": "tsx src/scripts/cluster-manage.ts",
     "snapshot": "tsx src/scripts/run-snapshot.ts",
     "embed": "tsx src/scripts/run-embed.ts",
+    "sync:articles": "tsx src/workers/sync-articles.ts",
     "test": "vitest run",
     "test:watch": "vitest",
     "db:push": "supabase db push"

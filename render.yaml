@@ -86,6 +86,23 @@ services:
         sync: false
 
   - type: cron
+    name: sync-articles
+    runtime: node
+    plan: starter
+    schedule: "0 4 * * 1"         # every Monday at 4am UTC (after Scryfall sync)
+    buildCommand: npm install
+    startCommand: npm run sync:articles
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: VOYAGE_API_KEY
+        sync: false
+
+  - type: cron
     name: embed-archetypes
     runtime: node
     plan: starter

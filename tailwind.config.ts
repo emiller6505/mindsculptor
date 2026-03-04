@@ -9,16 +9,16 @@ export default {
   theme: {
     extend: {
       colors: {
-        canvas:  '#06080F',   // page background — deep navy-black
-        surface: '#0C1220',   // cards, panels, modals
-        edge:    '#172035',   // borders, dividers
-        spark:   '#4F8EF7',   // electric blue — CTAs, active states
-        flame:   '#D4552A',   // Izzet red — heat indicators
-        copper:  '#B87333',   // machinery micro-details
-        gold:    '#C9A050',   // Spike tier badge
-        ink:     '#E4EEFF',   // body text
-        ash:     '#4A5878',   // secondary labels, timestamps
-        danger:  '#E85D5D',   // errors
+        canvas:  'rgb(var(--color-canvas) / <alpha-value>)',
+        surface: 'rgb(var(--color-surface) / <alpha-value>)',
+        edge:    'rgb(var(--color-edge) / <alpha-value>)',
+        spark:   'rgb(var(--color-spark) / <alpha-value>)',
+        flame:   'rgb(var(--color-flame) / <alpha-value>)',
+        copper:  'rgb(var(--color-copper) / <alpha-value>)',
+        gold:    'rgb(var(--color-gold) / <alpha-value>)',
+        ink:     'rgb(var(--color-ink) / <alpha-value>)',
+        ash:     'rgb(var(--color-ash) / <alpha-value>)',
+        danger:  'rgb(var(--color-danger) / <alpha-value>)',
       },
       fontFamily: {
         sans: ['var(--font-geist-sans)', ...fontFamily.sans],

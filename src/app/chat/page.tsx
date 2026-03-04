@@ -8,6 +8,7 @@ import type { Components } from 'react-markdown'
 import type { User } from '@supabase/supabase-js'
 import { Button, Input, Card } from '@/components/ui'
 import { createClient } from '@/lib/supabase-browser'
+import { ANON_LIMIT, USER_LIMIT, ANON_STORAGE_KEY, CHAT_STORAGE_KEY, getTodayUTC } from '@/lib/rate-limit-constants'
 
 const SUGGESTED_PROMPTS = [
   "What's dominating Modern right now?",
@@ -15,15 +16,6 @@ const SUGGESTED_PROMPTS = [
   "Which Modern decks are using counterspell?",
   "Build me a sideboard plan vs Amulet Titan",
 ]
-
-const ANON_LIMIT = 5
-const USER_LIMIT = 10
-const ANON_STORAGE_KEY = 'fm_anon_queries'
-const CHAT_STORAGE_KEY = 'fm_chat_messages'
-
-function getTodayUTC(): string {
-  return new Date().toISOString().slice(0, 10)
-}
 
 // --- useCountdown hook ---
 function useCountdown(resetsAt: string | null): string | null {
@@ -52,6 +44,10 @@ function useCountdown(resetsAt: string | null): string | null {
 }
 
 // --- Anon localStorage helpers ---
+// V0 accepted gaps:
+// - Multi-tab race: tabs share localStorage but don't sync state in real time
+// - Anon→auth carry-over: anon queries don't count against auth limit (conversion incentive)
+// - Anon API bypass: no server-side anon enforcement — deferred to toy.7
 function getAnonCount(): number {
   try {
     const raw = localStorage.getItem(ANON_STORAGE_KEY)
@@ -259,6 +255,20 @@ function ChatPageInner() {
     })
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null)
+      if (!session?.user) {
+        // Sign-out: Nav already exhausted the anon bucket — re-read it
+        setAnonCountState(getAnonCount())
+        setShowAuthCard(true)
+      } else {
+        // Mid-session sign-in: fetch real query count
+        fetch('/api/query-status')
+          .then(r => r.json())
+          .then(d => {
+            if (d.remaining != null) setRemaining(d.remaining)
+            if (d.resets_at) setResetsAt(d.resets_at)
+          })
+          .catch(() => {})
+      }
     })
     return () => subscription.unsubscribe()
   }, [])

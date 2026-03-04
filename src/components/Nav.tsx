@@ -7,6 +7,7 @@ import type { User } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase-browser'
 import { Button, Drawer } from '@/components/ui'
 import AuthModal from './AuthModal'
+import { ANON_LIMIT, ANON_STORAGE_KEY, getTodayUTC } from '@/lib/rate-limit-constants'
 
 export default function Nav() {
   const path = usePathname()
@@ -63,6 +64,8 @@ export default function Nav() {
   async function signOut() {
     const supabase = createClient()
     await supabase.auth.signOut()
+    // Exhaust the anon bucket so signing out doesn't grant fresh anon queries
+    localStorage.setItem(ANON_STORAGE_KEY, JSON.stringify({ count: ANON_LIMIT, date: getTodayUTC() }))
     setUser(null)
     setAvatarOpen(false)
   }

@@ -5,15 +5,9 @@ import { cacheGet, cacheSet } from '@/lib/query-cache'
 import type { QueryResponse } from '@/query/index'
 import { createClient } from '@/lib/supabase-server'
 import { parseDecklist, validateDecklist, formatValidationWarning } from '@/query/decklist'
+import { USER_LIMIT, getResetsAt } from '@/lib/rate-limit-constants'
 
 const MAX_HISTORY = 6
-const DAILY_LIMIT = 10
-
-function getResetsAt(): string {
-  const now = new Date()
-  const tomorrow = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1))
-  return tomorrow.toISOString()
-}
 
 function sseEvent(event: string, data: unknown): string {
   return `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`
@@ -50,7 +44,7 @@ export async function POST(req: NextRequest) {
 
     currentCount = row?.count ?? 0
 
-    if (currentCount >= DAILY_LIMIT) {
+    if (currentCount >= USER_LIMIT) {
       return NextResponse.json({
         error: 'rate_limit_exceeded',
         rate_limit: { remaining: 0, resets_at: resetsAt, tier: 'user' },
@@ -63,7 +57,7 @@ export async function POST(req: NextRequest) {
 
   if (cached) {
     const rateLimit = user
-      ? { remaining: DAILY_LIMIT - currentCount - 1, resets_at: resetsAt, tier: 'user' }
+      ? { remaining: USER_LIMIT - currentCount - 1, resets_at: resetsAt, tier: 'user' }
       : { remaining: null, resets_at: resetsAt, tier: 'anon' }
 
     if (user) {
@@ -104,7 +98,7 @@ export async function POST(req: NextRequest) {
     const result = await handleQueryStream(body.query, history)
 
     const rateLimit = user
-      ? { remaining: DAILY_LIMIT - currentCount - 1, resets_at: resetsAt, tier: 'user' }
+      ? { remaining: USER_LIMIT - currentCount - 1, resets_at: resetsAt, tier: 'user' }
       : { remaining: null, resets_at: resetsAt, tier: 'anon' }
 
     const readable = new ReadableStream({

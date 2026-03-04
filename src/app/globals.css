@@ -2,7 +2,57 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Blueprint schematic grid — very low opacity, like technical diagrams on dark stone */
+@layer base {
+  :root {
+    --color-canvas:  6 8 15;
+    --color-surface: 12 18 32;
+    --color-edge:    23 32 53;
+    --color-spark:   79 142 247;
+    --color-flame:   212 85 42;
+    --color-copper:  184 115 51;
+    --color-gold:    201 160 80;
+    --color-ink:     228 238 255;
+    --color-ash:     74 88 120;
+    --color-danger:  232 93 93;
+    --font-display:  inherit;
+    --font-body:     inherit;
+    --text-glow:     none;
+  }
+
+  [data-theme="light"] {
+    --color-canvas:  239 242 248;
+    --color-surface: 255 255 255;
+    --color-edge:    205 212 232;
+    --color-spark:   37 99 235;
+    --color-flame:   220 38 38;
+    --color-copper:  146 64 14;
+    --color-gold:    161 98 7;
+    --color-ink:     15 23 42;
+    --color-ash:     100 116 139;
+    --color-danger:  220 38 38;
+    --font-display:  inherit;
+    --font-body:     inherit;
+    --text-glow:     none;
+  }
+
+  [data-theme="terminal"] {
+    --color-canvas:  10 15 10;
+    --color-surface: 15 22 15;
+    --color-edge:    26 46 26;
+    --color-spark:   34 197 94;
+    --color-flame:   249 115 22;
+    --color-copper:  184 115 51;
+    --color-gold:    251 191 36;
+    --color-ink:     220 252 231;
+    --color-ash:     74 107 74;
+    --color-danger:  239 68 68;
+    --font-display:  inherit;
+    --font-body:     inherit;
+    --text-glow:     none;
+  }
+}
+
+/* Blueprint schematic grid */
 body::before {
   content: '';
   position: fixed;
@@ -10,8 +60,8 @@ body::before {
   pointer-events: none;
   z-index: 0;
   background-image:
-    linear-gradient(rgba(79, 142, 247, 0.025) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(79, 142, 247, 0.025) 1px, transparent 1px);
+    linear-gradient(rgb(var(--color-spark) / 0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(var(--color-spark) / 0.025) 1px, transparent 1px);
   background-size: 48px 48px;
   background-position: 24px 24px;
 }
@@ -23,19 +73,19 @@ body > * {
 }
 
 @layer utilities {
-  /* Electric-blue glow for interactive elements */
   .glow-spark {
-    box-shadow: 0 0 0 1px rgb(79 142 247 / 0.25), 0 0 12px rgb(79 142 247 / 0.1);
+    box-shadow: 0 0 0 1px rgb(var(--color-spark) / 0.25), 0 0 12px rgb(var(--color-spark) / 0.1);
   }
   .glow-spark-sm {
-    box-shadow: 0 0 0 1px rgb(79 142 247 / 0.2), 0 0 6px rgb(79 142 247 / 0.08);
+    box-shadow: 0 0 0 1px rgb(var(--color-spark) / 0.2), 0 0 6px rgb(var(--color-spark) / 0.08);
   }
-
-  /* Oracle response treatment — electric-blue left border with faint glow */
   .oracle-border {
-    border-left: 2px solid #4F8EF7;
-    box-shadow: -4px 0 16px rgb(79 142 247 / 0.08);
+    border-left: 2px solid rgb(var(--color-spark));
+    box-shadow: -4px 0 16px rgb(var(--color-spark) / 0.08);
   }
+  .font-display { font-family: var(--font-display); }
+  .font-body    { font-family: var(--font-body); }
+  .text-glow    { text-shadow: var(--text-glow); }
 }
 
 /* Prose overrides for oracle markdown — dark theme matching our tokens */
