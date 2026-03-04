@@ -4,7 +4,7 @@ import type { ConversationMessage } from '@/query/index'
 import { cacheGet, cacheSet } from '@/lib/query-cache'
 import type { QueryResponse } from '@/query/index'
 import { createClient } from '@/lib/supabase-server'
-import { parseDecklist, validateDecklist, formatValidationWarning } from '@/query/decklist'
+import { parseDecklist, validateDecklist, formatValidationWarning, fixCopyLimits, renderDecklist } from '@/query/decklist'
 import { USER_LIMIT, WINDOW_MS } from '@/lib/rate-limit-constants'
 
 const MAX_HISTORY = 6
@@ -84,7 +84,13 @@ export async function POST(req: NextRequest) {
         if (parsed) {
           const errors = validateDecklist(parsed.main, parsed.side)
           if (errors.length > 0) {
-            controller.enqueue(encoder.encode(sseEvent('decklist_warning', { errors, message: formatValidationWarning(errors) })))
+            const copyErrors = errors.filter(e => e.type === 'copy_limit')
+            let corrected_list: string | undefined
+            if (copyErrors.length > 0) {
+              const fixed = fixCopyLimits(parsed.main, parsed.side)
+              corrected_list = renderDecklist(fixed.main, fixed.side)
+            }
+            controller.enqueue(encoder.encode(sseEvent('decklist_warning', { errors, message: formatValidationWarning(errors), corrected_list })))
           }
         }
 
@@ -122,7 +128,13 @@ export async function POST(req: NextRequest) {
           if (parsed) {
             const errors = validateDecklist(parsed.main, parsed.side)
             if (errors.length > 0) {
-              controller.enqueue(encoder.encode(sseEvent('decklist_warning', { errors, message: formatValidationWarning(errors) })))
+              const copyErrors = errors.filter(e => e.type === 'copy_limit')
+              let corrected_list: string | undefined
+              if (copyErrors.length > 0) {
+                const fixed = fixCopyLimits(parsed.main, parsed.side)
+                corrected_list = renderDecklist(fixed.main, fixed.side)
+              }
+              controller.enqueue(encoder.encode(sseEvent('decklist_warning', { errors, message: formatValidationWarning(errors), corrected_list })))
             }
           }
 

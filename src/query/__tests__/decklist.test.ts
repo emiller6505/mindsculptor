@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { parseDecklist, validateDecklist, formatValidationWarning } from '../decklist.js'
+import { parseDecklist, validateDecklist, formatValidationWarning, fixCopyLimits, renderDecklist } from '../decklist.js'
 
 describe('parseDecklist', () => {
   it('parses a standard decklist from a code block', () => {
@@ -258,5 +258,88 @@ describe('formatValidationWarning', () => {
     expect(msg).toContain('- ')
     expect(msg).toContain('Sunspine Lynx')
     expect(msg).toContain('16 cards')
+  })
+})
+
+describe('fixCopyLimits', () => {
+  it('reduces sideboard first when card exceeds 4 total', () => {
+    const main = [{ name: 'Elusive Otter', qty: 4 }]
+    const side = [{ name: 'Elusive Otter', qty: 4 }]
+    const { main: fm, side: fs, changes } = fixCopyLimits(main, side)
+    expect(fm).toEqual([{ name: 'Elusive Otter', qty: 4 }])
+    expect(fs).toEqual([])
+    expect(changes).toHaveLength(1)
+    expect(changes[0]).toContain('sideboard from 4 to 0')
+  })
+
+  it('reduces main if side is already 0 and main > 4', () => {
+    const main = [{ name: 'Elusive Otter', qty: 6 }]
+    const side: { name: string; qty: number }[] = []
+    const { main: fm, changes } = fixCopyLimits(main, side)
+    expect(fm).toEqual([{ name: 'Elusive Otter', qty: 4 }])
+    expect(changes).toHaveLength(1)
+    expect(changes[0]).toContain('main from 6 to 4')
+  })
+
+  it('removes entries with qty 0', () => {
+    const main = [{ name: 'Elusive Otter', qty: 4 }]
+    const side = [{ name: 'Elusive Otter', qty: 2 }]
+    const { side: fs } = fixCopyLimits(main, side)
+    expect(fs).toEqual([])
+  })
+
+  it('returns empty changes when no violations', () => {
+    const main = [{ name: 'Lightning Bolt', qty: 4 }]
+    const side = [{ name: 'Roiling Vortex', qty: 2 }]
+    const { changes } = fixCopyLimits(main, side)
+    expect(changes).toEqual([])
+  })
+
+  it('handles multiple violations', () => {
+    const main = [
+      { name: 'Elusive Otter', qty: 4 },
+      { name: 'Sunspine Lynx', qty: 3 },
+    ]
+    const side = [
+      { name: 'Elusive Otter', qty: 4 },
+      { name: 'Sunspine Lynx', qty: 3 },
+    ]
+    const { main: fm, side: fs, changes } = fixCopyLimits(main, side)
+    expect(fm).toEqual([
+      { name: 'Elusive Otter', qty: 4 },
+      { name: 'Sunspine Lynx', qty: 3 },
+    ])
+    expect(fs).toEqual([{ name: 'Sunspine Lynx', qty: 1 }])
+    expect(changes.length).toBeGreaterThanOrEqual(2)
+  })
+
+  it('skips basic lands', () => {
+    const main = [{ name: 'Mountain', qty: 20 }]
+    const side = [{ name: 'Mountain', qty: 5 }]
+    const { main: fm, side: fs, changes } = fixCopyLimits(main, side)
+    expect(fm).toEqual([{ name: 'Mountain', qty: 20 }])
+    expect(fs).toEqual([{ name: 'Mountain', qty: 5 }])
+    expect(changes).toEqual([])
+  })
+})
+
+describe('renderDecklist', () => {
+  it('outputs MTGA format with sideboard section', () => {
+    const main = [
+      { name: 'Lightning Bolt', qty: 4 },
+      { name: 'Mountain', qty: 20 },
+    ]
+    const side = [{ name: 'Smash to Smithereens', qty: 3 }]
+    const result = renderDecklist(main, side)
+    expect(result).toBe(
+      '4 Lightning Bolt\n20 Mountain\n\nSideboard:\n3 Smash to Smithereens',
+    )
+  })
+
+  it('omits sideboard header when side is empty', () => {
+    const main = [{ name: 'Lightning Bolt', qty: 4 }]
+    const result = renderDecklist(main, [])
+    expect(result).toBe('4 Lightning Bolt')
+    expect(result).not.toContain('Sideboard')
   })
 })

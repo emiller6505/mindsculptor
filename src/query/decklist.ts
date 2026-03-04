@@ -109,6 +109,79 @@ export function validateDecklist(main: CardEntry[], side: CardEntry[]): Validati
   return errors
 }
 
+export function fixCopyLimits(
+  main: CardEntry[],
+  side: CardEntry[],
+): { main: CardEntry[]; side: CardEntry[]; changes: string[] } {
+  const mainCounts = new Map<string, number>()
+  for (const c of main) {
+    const key = c.name.toLowerCase()
+    mainCounts.set(key, (mainCounts.get(key) ?? 0) + c.qty)
+  }
+
+  const sideCounts = new Map<string, number>()
+  for (const c of side) {
+    const key = c.name.toLowerCase()
+    sideCounts.set(key, (sideCounts.get(key) ?? 0) + c.qty)
+  }
+
+  const changes: string[] = []
+  const allCards = new Set([...mainCounts.keys(), ...sideCounts.keys()])
+
+  for (const card of allCards) {
+    if (BASIC_LANDS.has(card)) continue
+    const mq = mainCounts.get(card) ?? 0
+    const sq = sideCounts.get(card) ?? 0
+    if (mq + sq <= 4) continue
+
+    const displayName = [...main, ...side].find(c => c.name.toLowerCase() === card)?.name ?? card
+
+    // Reduce sideboard first
+    const newSq = Math.max(0, 4 - mq)
+    if (newSq !== sq) {
+      sideCounts.set(card, newSq)
+      changes.push(`${displayName}: reduced sideboard from ${sq} to ${newSq}`)
+    }
+
+    // If still over, reduce main
+    const newMq = Math.min(mq, 4 - newSq)
+    if (newMq !== mq) {
+      mainCounts.set(card, newMq)
+      changes.push(`${displayName}: reduced main from ${mq} to ${newMq}`)
+    }
+  }
+
+  const fixedMain = main
+    .map(c => ({ name: c.name, qty: scaleQty(c, mainCounts) }))
+    .filter(c => c.qty > 0)
+
+  const fixedSide = side
+    .map(c => ({ name: c.name, qty: scaleQty(c, sideCounts) }))
+    .filter(c => c.qty > 0)
+
+  return { main: fixedMain, side: fixedSide, changes }
+}
+
+function scaleQty(entry: CardEntry, targetCounts: Map<string, number>): number {
+  const key = entry.name.toLowerCase()
+  const target = targetCounts.get(key)
+  if (target === undefined) return entry.qty
+  if (target <= 0) return 0
+  // If there are duplicate lines for the same card, proportionally scale
+  // but for simplicity, first line gets the full target, rest get 0
+  const remaining = target
+  targetCounts.set(key, 0) // consume the budget
+  return remaining
+}
+
+export function renderDecklist(main: CardEntry[], side: CardEntry[]): string {
+  const lines = main.map(c => `${c.qty} ${c.name}`)
+  if (side.length > 0) {
+    lines.push('', 'Sideboard:', ...side.map(c => `${c.qty} ${c.name}`))
+  }
+  return lines.join('\n')
+}
+
 export function formatValidationWarning(errors: ValidationError[]): string {
   const lines = errors.map(e => {
     switch (e.type) {

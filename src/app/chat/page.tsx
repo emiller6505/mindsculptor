@@ -141,6 +141,7 @@ interface Message {
     confidence?: Confidence
     remaining?: number | null
     decklist_warning?: string | null
+    corrected_list?: string | null
   }
 }
 
@@ -385,6 +386,7 @@ function ChatPageInner() {
       let messageAdded = false
       let streamDone = false
       let decklistWarning: string | null = null
+      let correctedList: string | null = null
       const CHARS_PER_TICK = 2
       const TICK_MS = 12
 
@@ -458,6 +460,7 @@ function ChatPageInner() {
                 }
               } else if (currentEvent === 'decklist_warning') {
                 decklistWarning = payload.message ?? null
+                correctedList = payload.corrected_list ?? null
               } else if (currentEvent === 'done') {
                 // Flush remaining chars immediately then attach meta
                 displayed += charQueue
@@ -495,6 +498,7 @@ function ChatPageInner() {
                           confidence: metaPayload.data?.confidence as Confidence | undefined,
                           remaining: queryRemaining as number | null,
                           decklist_warning: decklistWarning,
+                          corrected_list: correctedList,
                         },
                       } : {}),
                     }
@@ -643,9 +647,17 @@ function ChatPageInner() {
                     </p>
                   )}
                   {msg.meta?.decklist_warning && (
-                    <div className="mt-3 pl-4 text-xs text-flame flex items-start gap-2 whitespace-pre-line">
-                      <span>⚠</span>
-                      <span>{msg.meta.decklist_warning}</span>
+                    <div className="mt-3 pl-4">
+                      <div className="text-xs text-flame flex items-start gap-2 whitespace-pre-line">
+                        <span>⚠</span>
+                        <span>{msg.meta.decklist_warning}</span>
+                      </div>
+                      {msg.meta.corrected_list && (
+                        <div className="mt-2">
+                          <p className="text-xs text-ash mb-1">Auto-corrected decklist:</p>
+                          <CodeBlock>{msg.meta.corrected_list}</CodeBlock>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
