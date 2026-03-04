@@ -1,9 +1,15 @@
 import { vi, describe, it, expect, beforeEach } from 'vitest'
 
 vi.mock('@/query/index.js', () => ({ handleQuery: vi.fn() }))
+vi.mock('@/lib/supabase-server', () => ({ createClient: vi.fn() }))
 
 import { handleQuery } from '@/query/index.js'
+import { createClient } from '@/lib/supabase-server'
 import { POST } from '../query/route.js'
+
+const mockSupabase = {
+  auth: { getUser: vi.fn().mockResolvedValue({ data: { user: null } }) },
+}
 
 function makeReq(body: unknown, malformedJson = false) {
   return {
@@ -15,6 +21,8 @@ function makeReq(body: unknown, malformedJson = false) {
 
 beforeEach(() => {
   vi.resetAllMocks()
+  vi.mocked(createClient).mockResolvedValue(mockSupabase as never)
+  mockSupabase.auth.getUser.mockResolvedValue({ data: { user: null } })
   vi.mocked(handleQuery).mockResolvedValue({
     answer: 'Burn is tier 1.',
     intent: { format: 'modern', question_type: 'metagame', archetype: null, archetype_b: null, opponent_archetype: null, card: null, timeframe_days: 90 },
