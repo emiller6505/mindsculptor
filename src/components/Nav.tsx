@@ -15,6 +15,7 @@ export default function Nav() {
   const [historyOpen, setHistoryOpen] = useState(false)
   const [alertsOpen, setAlertsOpen] = useState(false)
   const [avatarOpen, setAvatarOpen] = useState(false)
+  const [mobileOpen, setMobileOpen] = useState(false)
   const avatarRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -31,6 +32,11 @@ export default function Nav() {
 
     return () => subscription.unsubscribe()
   }, [])
+
+  // Close mobile menu on route change
+  useEffect(() => {
+    setMobileOpen(false)
+  }, [path])
 
   const closeAvatar = useCallback(() => setAvatarOpen(false), [])
 
@@ -75,12 +81,14 @@ export default function Nav() {
             </span>
           </Link>
 
-          <div className="flex items-center gap-1">
+          {/* Desktop nav links */}
+          <div className="hidden md:flex items-center gap-1">
             <NavLink href="/chat" active={path.startsWith('/chat')}>Chat</NavLink>
             <NavLink href="/data" active={path.startsWith('/data')}>Metagame Data</NavLink>
           </div>
 
-          <div className="ml-auto flex items-center gap-2">
+          {/* Desktop right side */}
+          <div className="hidden md:flex ml-auto items-center gap-2">
             {user ? (
               <>
                 <IconButton
@@ -124,12 +132,73 @@ export default function Nav() {
                 Sign in
               </Button>
             )}
-            <button className="text-sm font-medium px-3 py-1.5 rounded-md border border-spark/20 bg-spark/10 text-spark hover:bg-spark/20 transition-colors">
+            <button className="text-sm font-medium px-3 py-2 rounded-md border border-spark/20 bg-spark/10 text-spark hover:bg-spark/20 transition-colors">
               Go Spike ↑
             </button>
           </div>
 
+          {/* Mobile hamburger */}
+          <button
+            onClick={() => setMobileOpen(o => !o)}
+            className="md:hidden ml-auto w-10 h-10 flex items-center justify-center rounded-md text-ash hover:text-ink hover:bg-surface transition-colors"
+            aria-label="Toggle menu"
+          >
+            {mobileOpen ? (
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            ) : (
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            )}
+          </button>
+
         </div>
+
+        {/* Mobile slide-down panel */}
+        {mobileOpen && (
+          <div className="md:hidden border-t border-edge bg-canvas/95 backdrop-blur-sm px-6 py-4 space-y-1">
+            <MobileNavLink href="/chat" active={path.startsWith('/chat')}>Chat</MobileNavLink>
+            <MobileNavLink href="/data" active={path.startsWith('/data')}>Metagame Data</MobileNavLink>
+            <div className="border-t border-edge my-3" />
+            {user ? (
+              <>
+                <button
+                  onClick={() => { setHistoryOpen(true); setMobileOpen(false) }}
+                  className="block w-full text-left text-sm text-ash hover:text-ink py-2.5 min-h-[44px]"
+                >
+                  🕐 History
+                </button>
+                <button
+                  onClick={() => { setAlertsOpen(true); setMobileOpen(false) }}
+                  className="block w-full text-left text-sm text-ash hover:text-ink py-2.5 min-h-[44px]"
+                >
+                  🔔 Alerts
+                </button>
+                <div className="border-t border-edge my-3" />
+                <div className="text-xs text-ash truncate py-1">{user.email}</div>
+                <button
+                  onClick={signOut}
+                  className="block w-full text-left text-sm text-ink hover:text-spark py-2.5 min-h-[44px]"
+                >
+                  Sign out
+                </button>
+              </>
+            ) : (
+              <button
+                onClick={() => { setShowAuth(true); setMobileOpen(false) }}
+                className="block w-full text-left text-sm text-ink hover:text-spark py-2.5 min-h-[44px]"
+              >
+                Sign in
+              </button>
+            )}
+            <div className="border-t border-edge my-3" />
+            <button className="w-full text-sm font-medium px-3 py-2.5 min-h-[44px] rounded-md border border-spark/20 bg-spark/10 text-spark hover:bg-spark/20 transition-colors text-center">
+              Go Spike ↑
+            </button>
+          </div>
+        )}
       </nav>
 
       {showAuth && <AuthModal onClose={() => setShowAuth(false)} />}
@@ -157,10 +226,31 @@ function NavLink({
   return (
     <Link
       href={href}
-      className={`text-sm px-3 py-1.5 rounded-md transition-colors ${
+      className={`text-sm px-3 py-1.5 min-h-[44px] flex items-center rounded-md transition-colors ${
         active
           ? 'text-ink bg-edge'
           : 'text-ash hover:text-ink hover:bg-surface'
+      }`}
+    >
+      {children}
+    </Link>
+  )
+}
+
+function MobileNavLink({
+  href,
+  active,
+  children,
+}: {
+  href: string
+  active: boolean
+  children: React.ReactNode
+}) {
+  return (
+    <Link
+      href={href}
+      className={`block text-sm py-2.5 min-h-[44px] transition-colors ${
+        active ? 'text-spark' : 'text-ink hover:text-spark'
       }`}
     >
       {children}

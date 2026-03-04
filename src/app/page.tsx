@@ -23,16 +23,16 @@ function trendArrow(delta: number | null): { label: string; color: string } | nu
 function MetaBar({ name, href, share, trendDelta, maxShare }: { name: string; href: string; share: number; trendDelta: number | null; maxShare: number }) {
   const trend = trendArrow(trendDelta)
   return (
-    <div className="flex items-center gap-3 py-1.5">
-      <div className="w-full max-w-[120px] bg-edge rounded-full h-1.5 shrink-0">
+    <div className="flex items-center gap-2 sm:gap-3 py-1.5">
+      <div className="flex-1 min-w-0 bg-edge rounded-full h-1.5">
         <div
           className="bg-spark/60 h-1.5 rounded-full"
           style={{ width: `${(share / (maxShare * 2)) * 100}%` }}
         />
       </div>
-      <Link href={href} className="text-sm text-ink/80 hover:text-spark transition-colors w-40 shrink-0 truncate">{name}</Link>
-      <span className="text-xs text-ash tabular-nums w-10 shrink-0">{share}%</span>
-      {trend && <span className={`text-xs font-medium ${trend.color}`}>{trend.label}</span>}
+      <Link href={href} className="text-sm text-ink/80 hover:text-spark transition-colors shrink-0 truncate max-w-[10ch] sm:max-w-[16ch]">{name}</Link>
+      <span className="text-xs text-ash tabular-nums shrink-0">{share}%</span>
+      {trend && <span className={`text-xs font-medium shrink-0 ${trend.color}`}>{trend.label}</span>}
     </div>
   )
 }
@@ -99,7 +99,7 @@ export default async function LandingPage() {
   ])
 
   return (
-    <main className="max-w-4xl mx-auto px-6 py-16 space-y-16">
+    <main className="max-w-4xl mx-auto px-6 py-10 md:py-16 space-y-10 md:space-y-16">
 
       {/* Hero */}
       <div className="space-y-8">
@@ -117,13 +117,13 @@ export default async function LandingPage() {
       <div className="border-t border-edge" />
 
       {/* Live meta snapshot */}
-      <div className="bg-surface border border-edge rounded-xl p-8 grid grid-cols-1 md:grid-cols-2 gap-10">
+      <div className="bg-surface border border-edge rounded-xl p-5 md:p-8 grid grid-cols-1 md:grid-cols-2 gap-10">
         <FormatColumn label="Modern" href="/data/modern" format="modern" rows={modernMeta} />
         <FormatColumn label="Standard" href="/data/standard" format="standard" rows={standardMeta} />
       </div>
 
       {/* CTAs */}
-      <div className="flex items-center gap-4">
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
         <Link href="/chat" className={buttonVariants()}>
           Ask the Firemind — it&apos;s free
         </Link>

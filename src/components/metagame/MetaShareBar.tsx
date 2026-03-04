@@ -27,7 +27,6 @@ function TierBadge({ tier }: { tier: string | null }) {
 
 function CustomYTick({ x, y, payload, format }: { x: number; y: number; payload: { value: string }; format: string }) {
   const entry = payload.value
-  // payload.value is "tier|archetype_id|name"
   const [tier, archetypeId, name] = entry.split('|')
 
   return (
@@ -57,6 +56,7 @@ function CustomTooltip({ active, payload }: { active?: boolean; payload?: Array<
 }
 
 const MAX_BARS = 15
+const MOBILE_MAX = 10
 
 function SortToggle() {
   const [active] = useState<'meta' | 'winrate'>('meta')
@@ -64,12 +64,12 @@ function SortToggle() {
   return (
     <div className="flex items-center gap-2 mb-3">
       <button
-        className={active === 'meta' ? 'text-xs px-3 py-1 rounded-md bg-spark/10 text-spark' : 'text-xs px-3 py-1 rounded-md text-ash'}
+        className={active === 'meta' ? 'text-xs px-3 py-2 min-h-[44px] rounded-md bg-spark/10 text-spark' : 'text-xs px-3 py-2 min-h-[44px] rounded-md text-ash'}
       >
         Meta Share
       </button>
       <button
-        className="text-xs px-3 py-1 rounded-md text-ash cursor-not-allowed opacity-50"
+        className="text-xs px-3 py-2 min-h-[44px] rounded-md text-ash cursor-not-allowed opacity-50"
         title="Win rate requires match data"
         disabled
       >
@@ -79,10 +79,42 @@ function SortToggle() {
   )
 }
 
+function MobileMetaList({ data, format }: { data: MetaShareEntry[]; format: string }) {
+  const items = data.slice(0, MOBILE_MAX)
+  const maxShare = items[0]?.meta_share ?? 1
+
+  return (
+    <div className="space-y-2.5">
+      {items.map(d => {
+        const pct = (d.meta_share / maxShare) * 100
+        return (
+          <div key={d.archetype_id} className="flex items-center gap-2">
+            <div className="flex items-center gap-1 w-[140px] shrink-0 min-w-0">
+              <TierBadge tier={d.tier} />
+              <Link
+                href={`/data/${format}/${d.archetype_id}`}
+                className="text-sm text-ink hover:text-spark transition-colors truncate"
+              >
+                {d.archetype_name}
+              </Link>
+            </div>
+            <div className="flex-1 h-2 bg-edge rounded-full overflow-hidden">
+              <div
+                className="h-full bg-spark/60 rounded-full"
+                style={{ width: `${pct}%` }}
+              />
+            </div>
+            <span className="text-xs text-ash tabular-nums">{d.meta_share.toFixed(1)}%</span>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
 export function MetaShareBar({ data, format }: { data: MetaShareEntry[]; format: string }) {
   const truncated = data.slice(0, MAX_BARS)
   const chartData = truncated.map(d => ({
-    // Encode tier+id+name into the Y key for the custom tick
     name: `${d.tier ?? ''}|${d.archetype_id}|${d.archetype_name}`,
     label: d.archetype_name,
     meta_share: d.meta_share,
@@ -91,27 +123,34 @@ export function MetaShareBar({ data, format }: { data: MetaShareEntry[]; format:
   return (
     <div className="w-full">
       <SortToggle />
-      <div style={{ height: Math.max(200, truncated.length * 32) }}>
-      <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={chartData} layout="vertical" margin={{ left: 160, right: 20, top: 5, bottom: 5 }}>
-          <XAxis type="number" domain={[0, 'auto']} tickFormatter={v => `${v}%`} tick={{ fill: '#4A5878', fontSize: 11 }} />
-          <YAxis
-            type="category"
-            dataKey="name"
-            width={160}
-            interval={0}
-            tick={(props: Record<string, unknown>) => <CustomYTick {...(props as { x: number; y: number; payload: { value: string } })} format={format} />}
-            tickLine={false}
-            axisLine={false}
-          />
-          <Tooltip content={<CustomTooltip />} cursor={{ fill: '#172035', opacity: 0.5 }} />
-          <Bar dataKey="meta_share" radius={[0, 4, 4, 0]} barSize={24}>
-            {chartData.map((_, i) => (
-              <Cell key={i} fill="#4F8EF7" fillOpacity={0.7} />
-            ))}
-          </Bar>
-        </BarChart>
-      </ResponsiveContainer>
+
+      {/* Mobile: list layout */}
+      <div className="sm:hidden">
+        <MobileMetaList data={data} format={format} />
+      </div>
+
+      {/* Desktop: Recharts bar chart */}
+      <div className="hidden sm:block" style={{ height: Math.max(200, truncated.length * 32) }}>
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={chartData} layout="vertical" margin={{ left: 160, right: 20, top: 5, bottom: 5 }}>
+            <XAxis type="number" domain={[0, 'auto']} tickFormatter={v => `${v}%`} tick={{ fill: '#4A5878', fontSize: 11 }} />
+            <YAxis
+              type="category"
+              dataKey="name"
+              width={160}
+              interval={0}
+              tick={(props: Record<string, unknown>) => <CustomYTick {...(props as { x: number; y: number; payload: { value: string } })} format={format} />}
+              tickLine={false}
+              axisLine={false}
+            />
+            <Tooltip content={<CustomTooltip />} cursor={{ fill: '#172035', opacity: 0.5 }} />
+            <Bar dataKey="meta_share" radius={[0, 4, 4, 0]} barSize={24}>
+              {chartData.map((_, i) => (
+                <Cell key={i} fill="#4F8EF7" fillOpacity={0.7} />
+              ))}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
       </div>
     </div>
   )

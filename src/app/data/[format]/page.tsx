@@ -134,7 +134,7 @@ export default async function FormatPage({
 
   if (!hasData) {
     return (
-      <main className="max-w-4xl mx-auto px-6 py-12 space-y-8">
+      <main className="max-w-4xl mx-auto px-6 py-8 md:py-12 space-y-8">
         <div className="space-y-4">
           <div className="flex items-center gap-3">
             {FORMATS.map(f => (
@@ -165,7 +165,7 @@ export default async function FormatPage({
   }
 
   return (
-    <main className="max-w-4xl mx-auto px-6 py-12 space-y-8">
+    <main className="max-w-4xl mx-auto px-6 py-8 md:py-12 space-y-8">
       {/* Header: format tabs + range tabs */}
       <div className="space-y-4">
         <div className="flex items-center gap-3">
@@ -188,7 +188,7 @@ export default async function FormatPage({
               key={r}
               href={`/data/${format}?range=${r}`}
               className={cn(
-                'text-xs px-3 py-1.5 rounded-md transition-colors',
+                'text-xs px-3 py-2 min-h-[44px] flex items-center rounded-md transition-colors',
                 r === activeRange
                   ? 'bg-spark/10 text-spark border border-spark/20'
                   : 'text-ash hover:text-ink border border-edge',

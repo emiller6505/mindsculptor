@@ -346,7 +346,7 @@ function ChatPageInner() {
           setResetsAt(data.rate_limit?.resets_at ?? null)
           setMessages(prev => [...prev, {
             role: 'oracle',
-            content: "You've reached today's limit. Your queries reset at midnight UTC.",
+            content: "You've reached today's query limit. Check the timer below for when it resets.",
           }])
           return
         }
@@ -515,7 +515,7 @@ function ChatPageInner() {
   // Placeholder for disabled input
   let placeholder = 'Ask the Firemind…'
   if (anonAtLimit) placeholder = 'Sign in to keep going…'
-  else if (userAtLimit) placeholder = 'Resets at midnight UTC'
+  else if (userAtLimit) placeholder = 'Limit reached'
 
   return (
     <div className="flex flex-col h-[calc(100vh-3rem)]">
@@ -526,26 +526,44 @@ function ChatPageInner() {
 
           {messages.length === 0 && (
             <div className="flex flex-col items-center justify-center min-h-[calc(100vh-10rem)]">
-              <div className="space-y-8 w-full max-w-lg">
-                <div className="text-center space-y-2">
-                  <p className="text-ink/75 text-sm">Ask about the current metagame, what to play, or how decks and cards perform.</p>
+              {atLimit ? (
+                <div className="space-y-4 text-center max-w-sm">
+                  <div className="text-3xl text-spark/30">⚡</div>
+                  <p className="text-sm text-ink font-medium">
+                    {anonAtLimit ? "You've used your free queries." : "You've reached today's query limit."}
+                  </p>
+                  {anonAtLimit ? (
+                    <p className="text-sm text-ash">Sign in to get more — it&apos;s free.</p>
+                  ) : countdown ? (
+                    <p className="text-sm text-ash">
+                      Resets in <span className="font-mono tabular-nums">{countdown}</span>
+                    </p>
+                  ) : (
+                    <p className="text-sm text-ash">Your queries will reset soon.</p>
+                  )}
                 </div>
-                <div
-                  className="grid grid-cols-2 gap-3 py-16 -my-16 px-12 -mx-12"
-                  style={{ background: 'radial-gradient(ellipse at 50% 50%, rgba(79,142,247,0.10) 0%, transparent 70%)' }}
-                >
-                  {SUGGESTED_PROMPTS.map(prompt => (
-                    <Button
-                      key={prompt}
-                      variant="secondary"
-                      onClick={() => submit(prompt)}
-                      className="justify-start text-left text-ink/80 bg-surface hover:bg-edge px-4 py-3.5 hover:glow-spark-sm"
-                    >
-                      {prompt}
-                    </Button>
-                  ))}
+              ) : (
+                <div className="space-y-8 w-full max-w-lg">
+                  <div className="text-center space-y-2">
+                    <p className="text-ink/75 text-sm">Ask about the current metagame, what to play, or how decks and cards perform.</p>
+                  </div>
+                  <div
+                    className="grid grid-cols-1 sm:grid-cols-2 gap-3 py-16 -my-16 px-12 -mx-12"
+                    style={{ background: 'radial-gradient(ellipse at 50% 50%, rgba(79,142,247,0.10) 0%, transparent 70%)' }}
+                  >
+                    {SUGGESTED_PROMPTS.map(prompt => (
+                      <Button
+                        key={prompt}
+                        variant="secondary"
+                        onClick={() => submit(prompt)}
+                        className="justify-start text-left text-ink/80 bg-surface hover:bg-edge px-4 py-3.5 hover:glow-spark-sm"
+                      >
+                        {prompt}
+                      </Button>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           )}
 
@@ -614,7 +632,7 @@ function ChatPageInner() {
 
       {/* Input bar */}
       <div className="border-t border-edge bg-canvas/80 backdrop-blur-sm flex-shrink-0">
-        <div className="max-w-3xl mx-auto px-6 py-4 space-y-2">
+        <div className="max-w-3xl mx-auto px-4 py-3 sm:px-6 sm:py-4 space-y-2">
           {!atLimit && counterReady && (
             <p className="text-xs text-ash text-center">
               {displayRemaining} {displayRemaining === 1 ? 'query' : 'queries'} left{countdown ? <>, resets in <span className="font-mono tabular-nums">{countdown}</span></> : ' today'}. <a href="#" className="text-spark hover:text-spark/80 transition-colors">Become a Spike</a> to unlock more.

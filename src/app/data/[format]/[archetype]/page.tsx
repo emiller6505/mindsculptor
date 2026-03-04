@@ -191,7 +191,7 @@ export default async function ArchetypePage({
   const encodedName = encodeURIComponent(arch.name)
 
   return (
-    <main className="max-w-4xl mx-auto px-6 py-12 space-y-8">
+    <main className="max-w-4xl mx-auto px-6 py-8 md:py-12 space-y-8">
       <Suspense fallback={<ArchetypeHeaderSkeleton />}>
         <ArchetypeHeader archetypeId={archetypeId} />
       </Suspense>
