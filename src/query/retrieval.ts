@@ -80,7 +80,10 @@ export async function retrieveContext(intent: Intent, trace?: Trace): Promise<Re
   const [topDecks, confidence, cardGlossary] = await Promise.all([
     time('attachDeckCosts', () => attachDeckCosts(rawDecks)),
     time('resolveConfidence', () => resolveConfidence(intent.format, cutoff, rawDecks.length)),
-    time('fetchCardGlossary', () => fetchCardGlossary(rawDecks)),
+    time('fetchCardGlossary', () => fetchCardGlossary(rawDecks, [
+      ...(intent.card_mentions ?? []),
+      ...(intent.card ? [intent.card] : []),
+    ])),
   ])
 
   return { format: intent.format, window_days, tournaments_count, top_decks: topDecks, card_info: cardInfo, card_glossary: cardGlossary, confidence }
@@ -299,6 +302,7 @@ async function attachDeckCosts(decks: RawDeck[]): Promise<DeckSummary[]> {
 
 async function fetchCardGlossary(
   decks: Array<{ mainboard: { name: string; qty: number }[]; sideboard: { name: string; qty: number }[] }>,
+  additionalNames: string[] = [],
 ): Promise<CardGlossaryEntry[]> {
   try {
     const nameSet = new Set<string>()
@@ -306,6 +310,7 @@ async function fetchCardGlossary(
       for (const c of d.mainboard) nameSet.add(c.name)
       for (const c of d.sideboard) nameSet.add(c.name)
     }
+    for (const n of additionalNames) if (n) nameSet.add(n)
     const names = [...nameSet]
     if (names.length === 0) return []
 

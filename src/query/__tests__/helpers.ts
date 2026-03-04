@@ -71,5 +71,6 @@ export const INTENT_FIXTURE = {
   archetype_b: null,
   opponent_archetype: null,
   card: null,
+  card_mentions: [] as string[],
   timeframe_days: 90 as const,
 }

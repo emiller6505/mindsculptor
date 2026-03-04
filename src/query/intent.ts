@@ -8,6 +8,7 @@ export interface Intent {
   archetype_b: string | null        // second archetype (matchup questions only)
   opponent_archetype: string | null // archetype the user wants to beat ("against X", "how to beat X")
   card: string | null               // specific card name (card_question only)
+  card_mentions: string[]           // specific card names mentioned in the query
   timeframe_days: 30 | 60 | 90     // lookback window; default 90
 }
 
@@ -22,6 +23,7 @@ Return ONLY valid JSON matching this exact schema — no prose, no markdown, no 
   "archetype_b": string | null,
   "opponent_archetype": string | null,
   "card": string | null,
+  "card_mentions": string[],
   "timeframe_days": 30 | 60 | 90
 }
 
@@ -32,6 +34,7 @@ Rules:
 - archetype_b: only for explicit matchup questions (X vs Y); null otherwise.
 - opponent_archetype: the deck the user wants to BEAT or sideboard AGAINST. Set this when the user says "against X", "how do I beat X", "sideboard plan vs X", "what beats X", etc. In these cases archetype should be null (user didn't name their own deck). Never set both archetype and opponent_archetype for the same deck.
 - card: canonical card name if this is a card question; null otherwise.
+- card_mentions: array of specific Magic card names mentioned in the query (e.g. ["Disdainful Stroke", "Monument to Endurance"]). Include any named cards regardless of question_type. Empty array if no cards are named.
 - timeframe_days: default 90. Use 30 if "this week", "recent", or "right now" is emphasized.`
 
 const VALID_FORMATS = new Set(['modern', 'standard'])
@@ -53,6 +56,9 @@ function normalizeIntent(raw: Record<string, unknown>): Intent {
     archetype_b: typeof raw.archetype_b === 'string' ? raw.archetype_b : null,
     opponent_archetype: typeof raw.opponent_archetype === 'string' ? raw.opponent_archetype : null,
     card: typeof raw.card === 'string' ? raw.card : null,
+    card_mentions: Array.isArray(raw.card_mentions)
+      ? (raw.card_mentions as unknown[]).filter((v): v is string => typeof v === 'string')
+      : [],
     timeframe_days,
   }
 }

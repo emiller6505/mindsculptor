@@ -74,6 +74,35 @@ describe('extractIntent', () => {
     expect(result.archetype).toBeNull()
   })
 
+  it('extracts card_mentions from a query naming specific cards', async () => {
+    vi.mocked(llm.complete).mockResolvedValueOnce(JSON.stringify({
+      ...INTENT_FIXTURE,
+      question_type: 'deck_advice',
+      opponent_archetype: 'Izzet Control',
+      card_mentions: ['Disdainful Stroke', 'Monument to Endurance'],
+    }))
+
+    const result = await extractIntent('What sideboard cards like Disdainful Stroke or Monument to Endurance beat Izzet Control?')
+
+    expect(result.card_mentions).toEqual(['Disdainful Stroke', 'Monument to Endurance'])
+  })
+
+  it('defaults card_mentions to empty array when LLM omits it', async () => {
+    vi.mocked(llm.complete).mockResolvedValueOnce(JSON.stringify({
+      format: 'modern',
+      question_type: 'metagame',
+      archetype: null,
+      archetype_b: null,
+      opponent_archetype: null,
+      card: null,
+      timeframe_days: 90,
+    }))
+
+    const result = await extractIntent('What is the metagame?')
+
+    expect(result.card_mentions).toEqual([])
+  })
+
   it('throws with a useful message when the LLM returns malformed JSON', async () => {
     vi.mocked(llm.complete).mockResolvedValueOnce('Sure! Here is the intent: {bad json}')
 

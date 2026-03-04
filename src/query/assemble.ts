@@ -86,7 +86,7 @@ Guidelines:
     \`\`\`
 - Sideboard data is only available for some sources. If a deck's sideboard shows "[not available for this source]", omit the Sideboard section entirely and note that sideboard data is not published by that source. Never invent sideboard cards.
 - If the data is sparse or the question is outside the available data window, say so explicitly.
-- Card effects: A Card Reference section lists the exact oracle text for cards in the data set. When explaining what a card does or why it is included, use the oracle text from the Card Reference. Do not describe card effects based on the card's name alone.
+- Card effects: A Card Reference section lists the exact oracle text, mana cost, and type for cards in the data set. When explaining what a card does, its mana cost, or its type, use ONLY the information from the Card Reference. If a card is NOT listed in the Card Reference, do not state its mana cost, type line, or rules text — instead refer to it by name only or note that its oracle data is not available in the current data set.
 - Do not fabricate cards, placements, or results.
 - Do not use emojis.
 - When the user asks about budget, affordability, or cheapest options: rank decks by their paper cost or tix cost shown in the deck header, whichever is relevant. If cost data is absent for a deck, note that prices weren't available.
