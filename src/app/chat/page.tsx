@@ -124,9 +124,9 @@ type Confidence = 'LOW' | 'MEDIUM' | 'HIGH' | 'VERY HIGH'
 
 const CONFIDENCE_COLORS: Record<Confidence, string> = {
   'VERY HIGH': 'text-spark',
-  'HIGH':      'text-spark',
-  'MEDIUM':    'text-gold',
-  'LOW':       'text-flame',
+  'HIGH': 'text-spark',
+  'MEDIUM': 'text-gold',
+  'LOW': 'text-flame',
 }
 
 interface Message {
@@ -245,9 +245,9 @@ function ChatPageInner() {
   const [streaming, setStreaming] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
   const [authReady, setAuthReady] = useState(false)
-  const submitRef = useRef<(q: string) => void>(() => {})
+  const submitRef = useRef<(q: string) => void>(() => { })
 
-  const countdown = useCountdown(remaining === 0 && user ? resetsAt : null)
+  const countdown = useCountdown(resetsAt)
 
   // Auth state
   useEffect(() => {
@@ -261,6 +261,18 @@ function ChatPageInner() {
     })
     return () => subscription.unsubscribe()
   }, [])
+
+  // Fetch real query count for logged-in users
+  useEffect(() => {
+    if (!authReady || !user) return
+    fetch('/api/query-status')
+      .then(r => r.json())
+      .then(d => {
+        if (d.remaining != null) setRemaining(d.remaining)
+        if (d.resets_at) setResetsAt(d.resets_at)
+      })
+      .catch(() => { })
+  }, [authReady, user])
 
   // Restore messages after auth redirect
   useEffect(() => {
@@ -496,6 +508,7 @@ function ChatPageInner() {
 
   // Compute counter display
   const limit = isAnon ? ANON_LIMIT : USER_LIMIT
+  const counterReady = isAnon || remaining != null
   const used = isAnon ? anonCount : (remaining != null ? limit - remaining : 0)
   const displayRemaining = limit - used
 
@@ -602,12 +615,12 @@ function ChatPageInner() {
       {/* Input bar */}
       <div className="border-t border-edge bg-canvas/80 backdrop-blur-sm flex-shrink-0">
         <div className="max-w-3xl mx-auto px-6 py-4 space-y-2">
-          {!atLimit && (
+          {!atLimit && counterReady && (
             <p className="text-xs text-ash text-center">
-              {displayRemaining} {displayRemaining === 1 ? 'query' : 'queries'} left today
+              {displayRemaining} {displayRemaining === 1 ? 'query' : 'queries'} left{countdown ? <>, resets in <span className="font-mono tabular-nums">{countdown}</span></> : ' today'}. <a href="#" className="text-spark hover:text-spark/80 transition-colors">Become a Spike</a> to unlock more.
             </p>
           )}
-          {userAtLimit && countdown && (
+          {atLimit && countdown && (
             <p className="text-xs text-ash text-center font-mono tabular-nums">
               Resets in {countdown}
             </p>
