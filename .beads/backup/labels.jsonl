@@ -1,3 +1,5 @@
+{"issue_id":"mindsculptor-00q","label":"backend"}
+{"issue_id":"mindsculptor-00q","label":"frontend"}
 {"issue_id":"mindsculptor-0zy","label":"backend"}
 {"issue_id":"mindsculptor-0zy","label":"frontend"}
 {"issue_id":"mindsculptor-1ub","label":"design"}
@@ -13,10 +15,14 @@
 {"issue_id":"mindsculptor-803","label":"backend"}
 {"issue_id":"mindsculptor-803","label":"data"}
 {"issue_id":"mindsculptor-9ej","label":"bug"}
+{"issue_id":"mindsculptor-agd","label":"backend"}
+{"issue_id":"mindsculptor-agd","label":"frontend"}
 {"issue_id":"mindsculptor-bg2","label":"data"}
 {"issue_id":"mindsculptor-bg2","label":"infra"}
 {"issue_id":"mindsculptor-d1c","label":"data"}
 {"issue_id":"mindsculptor-d1c","label":"infra"}
+{"issue_id":"mindsculptor-ebu","label":"design"}
+{"issue_id":"mindsculptor-ebu","label":"frontend"}
 {"issue_id":"mindsculptor-fad","label":"bug"}
 {"issue_id":"mindsculptor-fad","label":"design"}
 {"issue_id":"mindsculptor-i02","label":"design"}
