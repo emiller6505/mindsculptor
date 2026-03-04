@@ -12,7 +12,7 @@ import { createClient } from '@/lib/supabase-browser'
 const SUGGESTED_PROMPTS = [
   "What's dominating Modern right now?",
   "What should I play at my RCQ this weekend?",
-  "Is Murktide still the deck to beat?",
+  "Which Modern decks are using counterspell?",
   "Build me a sideboard plan vs Amulet Titan",
 ]
 
@@ -210,8 +210,8 @@ function AuthPromptCard({ resetsAt, messages }: { resetsAt: string | null; messa
         className="pl-4 py-4 pr-4 bg-surface/40 rounded-r-lg border-l-2"
         style={{ borderImage: 'linear-gradient(to bottom, #B87333, #D4552A) 1' }}
       >
-        <p className="text-sm text-ink font-medium mb-1">You&apos;ve got good questions.</p>
-        <p className="text-sm text-ink/70 mb-4">Create a free account to keep going. No credit card, ever.</p>
+        <p className="text-sm text-ink font-medium mb-1">You have great questions.</p>
+        <p className="text-sm text-ink/70 mb-4">Create a free account to keep going. No credit card required.</p>
 
         <Button
           variant="secondary"
@@ -242,9 +242,10 @@ function ChatPageInner() {
   const [remaining, setRemaining] = useState<number | null>(null)
   const [resetsAt, setResetsAt] = useState<string | null>(null)
   const [showAuthCard, setShowAuthCard] = useState(false)
+  const [streaming, setStreaming] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
-  const didAutoSubmit = useRef(false)
-  const authInitialized = useRef(false)
+  const [authReady, setAuthReady] = useState(false)
+  const submitRef = useRef<(q: string) => void>(() => {})
 
   const countdown = useCountdown(remaining === 0 && user ? resetsAt : null)
 
@@ -253,7 +254,7 @@ function ChatPageInner() {
     const supabase = createClient()
     supabase.auth.getUser().then(({ data: { user: u } }) => {
       setUser(u)
-      authInitialized.current = true
+      setAuthReady(true)
     })
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null)
@@ -279,18 +280,16 @@ function ChatPageInner() {
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages, loading, showAuthCard])
+  }, [messages.length, loading, showAuthCard])
 
   // Auto-submit query passed from landing page
+  const initialQuery = searchParams.get('q')
+  const [autoSubmitted, setAutoSubmitted] = useState(false)
   useEffect(() => {
-    if (didAutoSubmit.current) return
-    const q = searchParams.get('q')
-    if (q) {
-      didAutoSubmit.current = true
-      submit(q)
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+    if (autoSubmitted || !initialQuery || !authReady) return
+    setAutoSubmitted(true)
+    submitRef.current(initialQuery)
+  }, [initialQuery, autoSubmitted, authReady])
 
   const isAnon = !user
   const anonAtLimit = isAnon && anonCount >= ANON_LIMIT
@@ -306,6 +305,7 @@ function ChatPageInner() {
       const current = getAnonCount()
       if (current >= ANON_LIMIT) {
         setAnonCountState(current)
+        setShowAuthCard(true)
         return
       }
     }
@@ -325,53 +325,158 @@ function ChatPageInner() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ query: q, messages: history }),
       })
-      const data = await res.json()
 
-      if (res.status === 429) {
-        setRemaining(0)
-        setResetsAt(data.rate_limit?.resets_at ?? null)
-        setMessages(prev => [...prev, {
-          role: 'oracle',
-          content: "You've reached today's limit. Your queries reset at midnight UTC.",
-        }])
-        return
+      // Non-SSE error responses
+      if (!res.ok) {
+        const data = await res.json()
+        if (res.status === 429) {
+          setRemaining(0)
+          setResetsAt(data.rate_limit?.resets_at ?? null)
+          setMessages(prev => [...prev, {
+            role: 'oracle',
+            content: "You've reached today's limit. Your queries reset at midnight UTC.",
+          }])
+          return
+        }
+        throw new Error(data.error ?? 'Unknown error')
       }
 
-      if (!res.ok) throw new Error(data.error ?? 'Unknown error')
+      // SSE stream with character-drip buffer for smooth typewriter effect
+      const reader = res.body!.getReader()
+      const decoder = new TextDecoder()
+      let sseBuffer = ''
+      let currentEvent = ''
+      let metaPayload: { intent?: Record<string, unknown>; data?: Record<string, unknown>; rate_limit?: Record<string, unknown> } | null = null
 
-      // Update rate limit state from response
-      if (data.rate_limit) {
-        setResetsAt(data.rate_limit.resets_at)
-        if (data.rate_limit.tier === 'user' && data.rate_limit.remaining != null) {
-          setRemaining(data.rate_limit.remaining)
+      // Character drip: tokens queue up here, a fast interval drains them char-by-char
+      let charQueue = ''
+      let displayed = ''
+      let messageAdded = false
+      let streamDone = false
+      const CHARS_PER_TICK = 2
+      const TICK_MS = 12
+
+      const drip = setInterval(() => {
+        if (charQueue.length === 0) {
+          if (streamDone) {
+            clearInterval(drip)
+            setStreaming(false)
+          }
+          return
+        }
+        const batch = charQueue.slice(0, CHARS_PER_TICK)
+        charQueue = charQueue.slice(CHARS_PER_TICK)
+        displayed += batch
+        const snapshot = displayed
+        setMessages(prev => {
+          const updated = [...prev]
+          const last = updated[updated.length - 1]
+          if (last?.role === 'oracle') {
+            updated[updated.length - 1] = { ...last, content: snapshot }
+          }
+          return updated
+        })
+      }, TICK_MS)
+
+      try {
+        while (true) {
+          const { done, value } = await reader.read()
+          if (done) break
+
+          sseBuffer += decoder.decode(value, { stream: true })
+          const lines = sseBuffer.split('\n')
+          sseBuffer = lines.pop()!
+
+          for (const line of lines) {
+            if (line.startsWith('event: ')) {
+              currentEvent = line.slice(7)
+            } else if (line.startsWith('data: ')) {
+              const payload = JSON.parse(line.slice(6))
+
+              if (currentEvent === 'meta') {
+                metaPayload = payload
+                if (payload.rate_limit) {
+                  setResetsAt(payload.rate_limit.resets_at)
+                  if (payload.rate_limit.tier === 'user' && payload.rate_limit.remaining != null) {
+                    setRemaining(payload.rate_limit.remaining)
+                  }
+                }
+              } else if (currentEvent === 'delta') {
+                if (!messageAdded) {
+                  messageAdded = true
+                  setLoading(false)
+                  setStreaming(true)
+                  setMessages(prev => [...prev, { role: 'oracle', content: '' }])
+                }
+                charQueue += payload.text
+              } else if (currentEvent === 'error') {
+                clearInterval(drip)
+                setStreaming(false)
+                if (!messageAdded) {
+                  setMessages(prev => [...prev, { role: 'oracle', content: 'Something went wrong. Please try again.' }])
+                } else {
+                  setMessages(prev => {
+                    const updated = [...prev]
+                    const last = updated[updated.length - 1]
+                    if (last?.role === 'oracle') {
+                      updated[updated.length - 1] = { ...last, content: last.content || 'Something went wrong. Please try again.' }
+                    }
+                    return updated
+                  })
+                }
+              } else if (currentEvent === 'done') {
+                // Flush remaining chars immediately then attach meta
+                displayed += charQueue
+                charQueue = ''
+                const finalContent = displayed
+
+                // Anon: increment localStorage
+                if (isAnon) {
+                  const newCount = getAnonCount() + 1
+                  setAnonCount(newCount)
+                  setAnonCountState(newCount)
+                  if (newCount >= ANON_LIMIT) {
+                    setShowAuthCard(true)
+                  }
+                }
+
+                const queryRemaining = isAnon
+                  ? ANON_LIMIT - getAnonCount()
+                  : metaPayload?.rate_limit?.remaining ?? null
+
+                setMessages(prev => {
+                  const updated = [...prev]
+                  const last = updated[updated.length - 1]
+                  if (last?.role === 'oracle') {
+                    updated[updated.length - 1] = {
+                      ...last,
+                      content: finalContent,
+                      ...(metaPayload ? {
+                        meta: {
+                          format: metaPayload.intent?.format as string | null ?? null,
+                          window_days: metaPayload.data?.window_days as number,
+                          decks_analyzed: (metaPayload.data?.top_decks as unknown[])?.length ?? 0,
+                          confidence: metaPayload.data?.confidence as Confidence | undefined,
+                          remaining: queryRemaining as number | null,
+                        },
+                      } : {}),
+                    }
+                  }
+                  return updated
+                })
+
+                streamDone = true
+              }
+            }
+          }
+        }
+      } finally {
+        // If stream ends without a done event, clean up
+        if (!streamDone) {
+          clearInterval(drip)
+          setStreaming(false)
         }
       }
-
-      // Anon: increment localStorage
-      if (isAnon) {
-        const newCount = getAnonCount() + 1
-        setAnonCount(newCount)
-        setAnonCountState(newCount)
-        if (newCount >= ANON_LIMIT) {
-          setShowAuthCard(true)
-        }
-      }
-
-      const queryRemaining = isAnon
-        ? ANON_LIMIT - (getAnonCount())
-        : data.rate_limit?.remaining ?? null
-
-      setMessages(prev => [...prev, {
-        role: 'oracle',
-        content: data.answer,
-        meta: {
-          format: data.intent?.format,
-          window_days: data.data?.window_days,
-          decks_analyzed: data.data?.top_decks?.length ?? 0,
-          confidence: data.data?.confidence,
-          remaining: queryRemaining,
-        },
-      }])
     } catch (err) {
       setMessages(prev => [...prev, {
         role: 'oracle',
@@ -381,6 +486,8 @@ function ChatPageInner() {
       setLoading(false)
     }
   }
+
+  submitRef.current = submit
 
   function handleFormSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -455,7 +562,7 @@ function ChatPageInner() {
                       prose-table:text-sm prose-th:text-ink/70 prose-td:text-ink/60
                       prose-code:text-spark prose-code:bg-surface prose-code:px-1 prose-code:rounded">
                       <ReactMarkdown remarkPlugins={[[remarkGfm, { singleTilde: false }]]} components={mdComponents}>
-                        {msg.content}
+                        {streaming && i === messages.length - 1 ? msg.content + '▌' : msg.content}
                       </ReactMarkdown>
                     </div>
                   </div>

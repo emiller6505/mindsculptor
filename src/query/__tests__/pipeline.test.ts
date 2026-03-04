@@ -1,7 +1,7 @@
 import { vi, describe, it, expect, beforeEach } from 'vitest'
 import { INTENT_FIXTURE, DECK_SUMMARY_FIXTURE } from './helpers.js'
 
-vi.mock('../../lib/llm.js', () => ({ llm: { complete: vi.fn(), completeWithHistory: vi.fn() } }))
+vi.mock('../../lib/llm.js', () => ({ llm: { complete: vi.fn(), completeWithHistory: vi.fn(), completeStream: vi.fn(), completeStreamWithHistory: vi.fn() } }))
 vi.mock('../intent.js', () => ({ extractIntent: vi.fn() }))
 vi.mock('../retrieval.js', () => ({ retrieveContext: vi.fn() }))
 vi.mock('../../lib/query-cache', () => ({ cacheGet: vi.fn().mockReturnValue(null), cacheSet: vi.fn() }))

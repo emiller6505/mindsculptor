@@ -99,6 +99,15 @@ describe('extractIntent', () => {
     expect(opts?.temperature).toBe(0)
   })
 
+  it('uses Haiku model for fast intent extraction', async () => {
+    vi.mocked(llm.complete).mockResolvedValueOnce(JSON.stringify(INTENT_FIXTURE))
+
+    await extractIntent('test')
+
+    const [, , opts] = vi.mocked(llm.complete).mock.calls[0]
+    expect(opts?.model).toBe('claude-haiku-4-5-20251001')
+  })
+
   it('throws when the LLM returns an empty string', async () => {
     vi.mocked(llm.complete).mockResolvedValueOnce('')
 

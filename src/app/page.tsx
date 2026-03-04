@@ -5,6 +5,7 @@ import OracleInput from '@/components/landing/OracleInput'
 
 type SnapshotRow = {
   id: number
+  archetype_id: string
   meta_share: number
   trend_delta: number | null
   archetypes: { name: string }
@@ -19,7 +20,7 @@ function trendArrow(delta: number | null): { label: string; color: string } | nu
   return { label: '↓↓', color: 'text-flame' }
 }
 
-function MetaBar({ name, share, trendDelta, maxShare }: { name: string; share: number; trendDelta: number | null; maxShare: number }) {
+function MetaBar({ name, href, share, trendDelta, maxShare }: { name: string; href: string; share: number; trendDelta: number | null; maxShare: number }) {
   const trend = trendArrow(trendDelta)
   return (
     <div className="flex items-center gap-3 py-1.5">
@@ -29,7 +30,7 @@ function MetaBar({ name, share, trendDelta, maxShare }: { name: string; share: n
           style={{ width: `${(share / (maxShare * 2)) * 100}%` }}
         />
       </div>
-      <span className="text-sm text-ink/80 w-40 shrink-0 truncate">{name}</span>
+      <Link href={href} className="text-sm text-ink/80 hover:text-spark transition-colors w-40 shrink-0 truncate">{name}</Link>
       <span className="text-xs text-ash tabular-nums w-10 shrink-0">{share}%</span>
       {trend && <span className={`text-xs font-medium ${trend.color}`}>{trend.label}</span>}
     </div>
@@ -53,7 +54,7 @@ async function fetchTopArchetypes(format: string): Promise<SnapshotRow[]> {
 
   const { data } = await supabase
     .from('metagame_snapshots')
-    .select('id, meta_share, trend_delta, archetypes(name)')
+    .select('id, archetype_id, meta_share, trend_delta, archetypes(name)')
     .eq('format', format)
     .eq('window_start', latest.window_start)
     .eq('window_end', latest.window_end)
@@ -64,7 +65,7 @@ async function fetchTopArchetypes(format: string): Promise<SnapshotRow[]> {
   return data ?? []
 }
 
-function FormatColumn({ label, href, rows }: { label: string; href: string; rows: SnapshotRow[] }) {
+function FormatColumn({ label, href, format, rows }: { label: string; href: string; format: string; rows: SnapshotRow[] }) {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -80,6 +81,7 @@ function FormatColumn({ label, href, rows }: { label: string; href: string; rows
           <MetaBar
             key={r.id}
             name={r.archetypes.name}
+            href={`/data/${format}/${r.archetype_id}`}
             share={Number(r.meta_share)}
             trendDelta={r.trend_delta !== null ? Number(r.trend_delta) : null}
             maxShare={Number(rows[0].meta_share)}
@@ -116,8 +118,8 @@ export default async function LandingPage() {
 
       {/* Live meta snapshot */}
       <div className="bg-surface border border-edge rounded-xl p-8 grid grid-cols-1 md:grid-cols-2 gap-10">
-        <FormatColumn label="Modern" href="/data/modern" rows={modernMeta} />
-        <FormatColumn label="Standard" href="/data/standard" rows={standardMeta} />
+        <FormatColumn label="Modern" href="/data/modern" format="modern" rows={modernMeta} />
+        <FormatColumn label="Standard" href="/data/standard" format="standard" rows={standardMeta} />
       </div>
 
       {/* CTAs */}

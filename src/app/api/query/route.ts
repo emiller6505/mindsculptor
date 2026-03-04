@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { handleQuery } from '@/query/index'
+import { handleQueryStream } from '@/query/index'
 import type { ConversationMessage } from '@/query/index'
+import { cacheGet, cacheSet } from '@/lib/query-cache'
+import type { QueryResponse } from '@/query/index'
 import { createClient } from '@/lib/supabase-server'
 
 const MAX_HISTORY = 6
@@ -10,6 +12,10 @@ function getResetsAt(): string {
   const now = new Date()
   const tomorrow = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1))
   return tomorrow.toISOString()
+}
+
+function sseEvent(event: string, data: unknown): string {
+  return `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`
 }
 
 export async function POST(req: NextRequest) {
@@ -31,6 +37,7 @@ export async function POST(req: NextRequest) {
 
   const resetsAt = getResetsAt()
 
+  let currentCount = 0
   if (user) {
     const today = new Date().toISOString().slice(0, 10)
     const { data: row } = await supabase
@@ -40,7 +47,7 @@ export async function POST(req: NextRequest) {
       .eq('date', today)
       .single()
 
-    const currentCount = row?.count ?? 0
+    currentCount = row?.count ?? 0
 
     if (currentCount >= DAILY_LIMIT) {
       return NextResponse.json({
@@ -48,33 +55,83 @@ export async function POST(req: NextRequest) {
         rate_limit: { remaining: 0, resets_at: resetsAt, tier: 'user' },
       }, { status: 429 })
     }
+  }
 
-    try {
-      const result = await handleQuery(body.query, history)
+  const key = body.query.trim().toLowerCase()
+  const cached = cacheGet<QueryResponse>(key)
 
+  if (cached) {
+    const rateLimit = user
+      ? { remaining: DAILY_LIMIT - currentCount - 1, resets_at: resetsAt, tier: 'user' }
+      : { remaining: null, resets_at: resetsAt, tier: 'anon' }
+
+    if (user) {
+      const today = new Date().toISOString().slice(0, 10)
       await supabase
         .from('oracle_queries')
         .upsert(
           { user_id: user.id, date: today, count: currentCount + 1 },
           { onConflict: 'user_id,date' },
         )
-
-      return NextResponse.json({
-        ...result,
-        rate_limit: { remaining: DAILY_LIMIT - currentCount - 1, resets_at: resetsAt, tier: 'user' },
-      })
-    } catch (err) {
-      console.error('[api/query]', err)
-      return NextResponse.json({ error: 'Query failed' }, { status: 500 })
     }
+
+    const readable = new ReadableStream({
+      start(controller) {
+        const encoder = new TextEncoder()
+        controller.enqueue(encoder.encode(sseEvent('meta', { intent: cached.intent, data: cached.data, rate_limit: rateLimit })))
+        controller.enqueue(encoder.encode(sseEvent('delta', { text: cached.answer })))
+        controller.enqueue(encoder.encode(sseEvent('done', {})))
+        controller.close()
+      },
+    })
+
+    return new Response(readable, {
+      headers: { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', Connection: 'keep-alive' },
+    })
   }
 
-  // Anonymous path — no server enforcement
   try {
-    const result = await handleQuery(body.query, history)
-    return NextResponse.json({
-      ...result,
-      rate_limit: { remaining: null, resets_at: resetsAt, tier: 'anon' },
+    const result = await handleQueryStream(body.query, history)
+
+    const rateLimit = user
+      ? { remaining: DAILY_LIMIT - currentCount - 1, resets_at: resetsAt, tier: 'user' }
+      : { remaining: null, resets_at: resetsAt, tier: 'anon' }
+
+    const readable = new ReadableStream({
+      async start(controller) {
+        const encoder = new TextEncoder()
+        controller.enqueue(encoder.encode(sseEvent('meta', { intent: result.intent, data: result.data, rate_limit: rateLimit })))
+
+        let fullAnswer = ''
+        try {
+          for await (const chunk of result.stream) {
+            fullAnswer += chunk
+            controller.enqueue(encoder.encode(sseEvent('delta', { text: chunk })))
+          }
+          controller.enqueue(encoder.encode(sseEvent('done', {})))
+
+          cacheSet(key, { answer: fullAnswer, intent: result.intent, data: result.data })
+
+          if (user) {
+            const today = new Date().toISOString().slice(0, 10)
+            await supabase
+              .from('oracle_queries')
+              .upsert(
+                { user_id: user.id, date: today, count: currentCount + 1 },
+                { onConflict: 'user_id,date' },
+              )
+          }
+        } catch (err) {
+          console.error('[api/query] stream error', err)
+          controller.enqueue(encoder.encode(sseEvent('error', { error: 'Stream failed' })))
+        } finally {
+          controller.close()
+        }
+      },
+    })
+
+    return new Response(readable, {
+      headers: { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', Connection: 'keep-alive' },
     })
   } catch (err) {
     console.error('[api/query]', err)

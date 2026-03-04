@@ -59,7 +59,7 @@ function normalizeIntent(raw: Record<string, unknown>): Intent {
 
 export async function extractIntent(query: string): Promise<Intent> {
   const system = `${SYSTEM_BASE}\n\n${rcqPromptNote()}`
-  const raw = await llm.complete(system, query, { maxTokens: 256, temperature: 0 })
+  const raw = await llm.complete(system, query, { maxTokens: 256, temperature: 0, model: 'claude-haiku-4-5-20251001' })
   try {
     const cleaned = raw.trim().replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '')
     const parsed = JSON.parse(cleaned)

@@ -17,6 +17,12 @@ export interface QueryResponse {
   data: RetrievedData
 }
 
+export interface StreamingQueryResponse {
+  intent: Intent
+  data: RetrievedData
+  stream: AsyncIterable<string>
+}
+
 export async function handleQuery(userQuery: string, history: ConversationMessage[] = []): Promise<QueryResponse> {
   const key = userQuery.trim().toLowerCase()
   const cached = cacheGet<QueryResponse>(key)
@@ -50,4 +56,27 @@ export async function handleQuery(userQuery: string, history: ConversationMessag
   const result: QueryResponse = { answer, intent, data }
   cacheSet(key, result)
   return result
+}
+
+export async function handleQueryStream(userQuery: string, history: ConversationMessage[] = []): Promise<StreamingQueryResponse> {
+  const trace = new Trace('handleQueryStream')
+
+  const intent = await trace.time('extractIntent', () => extractIntent(userQuery))
+  const data = await trace.time('retrieveContext', () => retrieveContext(intent, trace))
+  const context = assembleContext(intent, data)
+
+  const userMsg = `Retrieved data:\n${context}\n\nUser question: ${userQuery}`
+  const system = buildResponseSystem()
+
+  console.log(`[trace:${trace.id}] stream started`)
+  trace.finish()
+
+  let stream: AsyncIterable<string>
+  if (history.length > 0) {
+    stream = llm.completeStreamWithHistory(system, [...history, { role: 'user', content: userMsg }], { maxTokens: 2048 })
+  } else {
+    stream = llm.completeStream(system, userMsg, { maxTokens: 2048 })
+  }
+
+  return { intent, data, stream }
 }
