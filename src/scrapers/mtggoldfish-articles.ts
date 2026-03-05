@@ -122,6 +122,11 @@ export async function scrapeNewMtggoldfishArticles(): Promise<void> {
           .single()
 
         if (insertErr) {
+          if (insertErr.code === '23505') {
+            console.log(`[articles] Already exists, skipping: ${url}`)
+            alreadyScraped.add(url)
+            continue
+          }
           console.error(`[articles] Insert error for ${url}: ${insertErr.message}`)
           totalErrors++
           continue
