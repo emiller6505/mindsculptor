@@ -73,7 +73,7 @@ export function ShareOverTime({ data }: { data: DataPoint[] }) {
           <div className="flex items-baseline gap-6">
             {filtered.map(d => (
               <div key={d.window_end} className="text-center">
-                <span className="text-2xl font-bold text-ink">{d.meta_share.toFixed(1)}%</span>
+                <span className="text-2xl font-bold text-ink text-glow">{d.meta_share.toFixed(1)}%</span>
                 <p className="text-xs text-ash mt-1">{d.window_end}</p>
               </div>
             ))}

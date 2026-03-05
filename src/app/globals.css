@@ -17,6 +17,11 @@
     --font-display:  inherit;
     --font-body:     inherit;
     --text-glow:     none;
+    --bg-pattern:
+      linear-gradient(rgb(var(--color-spark) / 0.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgb(var(--color-spark) / 0.025) 1px, transparent 1px);
+    --bg-size: 48px 48px;
+    --bg-position: 24px 24px;
   }
 
   [data-theme="light"] {
@@ -33,6 +38,11 @@
     --font-display:  inherit;
     --font-body:     inherit;
     --text-glow:     none;
+    --bg-pattern:
+      linear-gradient(rgb(var(--color-spark) / 0.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgb(var(--color-spark) / 0.025) 1px, transparent 1px);
+    --bg-size: 48px 48px;
+    --bg-position: 24px 24px;
   }
 
   [data-theme="terminal"] {
@@ -49,21 +59,59 @@
     --font-display:  inherit;
     --font-body:     inherit;
     --text-glow:     none;
+    --bg-pattern:
+      linear-gradient(rgb(var(--color-spark) / 0.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgb(var(--color-spark) / 0.025) 1px, transparent 1px);
+    --bg-size: 48px 48px;
+    --bg-position: 24px 24px;
+  }
+
+  [data-theme="arcana"] {
+    --color-canvas:  244 232 201;
+    --color-surface: 235 220 185;
+    --color-edge:    180 155 110;
+    --color-spark:   124 58 237;
+    --color-flame:   220 38 38;
+    --color-copper:  146 64 14;
+    --color-gold:    161 98 7;
+    --color-ink:     28 20 12;
+    --color-ash:     101 75 46;
+    --color-danger:  220 38 38;
+    --font-display:  var(--font-cinzel), 'Palatino Linotype', Georgia, serif;
+    --font-body:     var(--font-almendra), 'Papyrus', fantasy;
+    --text-glow:     0 0 8px rgb(124 58 237 / 0.6), 0 0 16px rgb(124 58 237 / 0.3);
+    --bg-pattern:
+      radial-gradient(ellipse at 20% 30%, rgb(180 155 110 / 0.15) 0%, transparent 50%),
+      radial-gradient(ellipse at 70% 60%, rgb(180 155 110 / 0.12) 0%, transparent 40%),
+      radial-gradient(ellipse at 50% 80%, rgb(180 155 110 / 0.08) 0%, transparent 60%);
+    --bg-size: 100% 100%;
+    --bg-position: 0 0;
   }
 }
 
-/* Blueprint schematic grid */
+/* Arcana: override entire app font to medieval scroll aesthetic */
+[data-theme="arcana"] {
+  font-size: 120%;
+}
+[data-theme="arcana"] body {
+  font-family: var(--font-body);
+  letter-spacing: 0.01em;
+}
+
+/* Background pattern (grid for dark/light/terminal, parchment for arcana) */
 body::before {
   content: '';
   position: fixed;
   inset: 0;
   pointer-events: none;
   z-index: 0;
-  background-image:
-    linear-gradient(rgb(var(--color-spark) / 0.025) 1px, transparent 1px),
-    linear-gradient(90deg, rgb(var(--color-spark) / 0.025) 1px, transparent 1px);
-  background-size: 48px 48px;
-  background-position: 24px 24px;
+  background-image: var(--bg-pattern);
+  background-size: var(--bg-size);
+  background-position: var(--bg-position);
+}
+
+[data-theme="arcana"] body::before {
+  box-shadow: inset 0 0 120px 60px rgb(28 20 12 / 0.15);
 }
 
 /* Content sits above the pattern */

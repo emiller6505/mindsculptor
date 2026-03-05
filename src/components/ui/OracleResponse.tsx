@@ -14,7 +14,7 @@ export function OracleResponse({
       <span className="text-xs font-medium text-copper tracking-wide uppercase">
         Firemind
       </span>
-      <div className="prose-oracle mt-2">
+      <div className="prose-oracle font-body mt-2">
         <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>
       </div>
     </div>

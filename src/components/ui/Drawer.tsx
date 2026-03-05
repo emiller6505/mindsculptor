@@ -47,7 +47,7 @@ export function Drawer({
       >
         {title && (
           <div className="flex items-center justify-between border-b border-edge px-6 py-4">
-            <h2 className="text-sm font-medium text-ink">{title}</h2>
+            <h2 className="text-sm font-medium text-ink font-display">{title}</h2>
             <button
               onClick={onClose}
               className="text-ash hover:text-ink transition-colors"

@@ -19,7 +19,7 @@ export function ConfidenceBadge({
       className="text-xs text-ash"
       title="Confidence reflects sample size and recency of tournament data"
     >
-      Based on {sampleSize} decks · <span className={color}>{confidence}</span>
+      Based on {sampleSize} decks · <span className={`${color} text-glow`}>{confidence}</span>
     </span>
   )
 }

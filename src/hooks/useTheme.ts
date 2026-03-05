@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 
-export const THEMES = ['dark', 'light', 'terminal'] as const
+export const THEMES = ['dark', 'light', 'terminal', 'arcana'] as const
 export type Theme = typeof THEMES[number]
 
 export function useTheme() {

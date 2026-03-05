@@ -32,7 +32,7 @@ export default function AuthModal({ onClose }: { onClose: () => void }) {
       onClick={(e) => { if (e.target === overlayRef.current) onClose() }}
     >
       <Card className="w-full max-w-sm bg-canvas p-8 shadow-2xl">
-        <h2 className="text-lg font-semibold text-ink mb-6 text-center">Sign in to Firemind</h2>
+        <h2 className="text-lg font-semibold text-ink mb-6 text-center font-display">Sign in to Firemind</h2>
 
         <Button
           variant="secondary"

@@ -10,7 +10,7 @@ function MoverRow({ entry, format, positive }: { entry: MoverEntry; format: stri
       >
         {entry.archetype_name}
       </Link>
-      <span className={`text-sm font-medium tabular-nums ${positive ? 'text-spark' : 'text-flame'}`}>
+      <span className={`text-sm font-medium tabular-nums ${positive ? 'text-spark text-glow' : 'text-flame'}`}>
         {positive ? '+' : ''}{entry.trend_delta.toFixed(1)}%
       </span>
     </div>
@@ -37,7 +37,7 @@ export function TopMoversWidget({
   return (
     <div className="grid grid-cols-2 gap-6">
       <div>
-        <h3 className="text-xs font-medium text-ash uppercase tracking-wide mb-2">Gainers</h3>
+        <h3 className="text-xs font-medium text-ash uppercase tracking-wide mb-2 font-display">Gainers</h3>
         {gainers.length === 0 ? (
           <p className="text-xs text-ash">None this window</p>
         ) : (
@@ -45,7 +45,7 @@ export function TopMoversWidget({
         )}
       </div>
       <div>
-        <h3 className="text-xs font-medium text-ash uppercase tracking-wide mb-2">Losers</h3>
+        <h3 className="text-xs font-medium text-ash uppercase tracking-wide mb-2 font-display">Losers</h3>
         {losers.length === 0 ? (
           <p className="text-xs text-ash">None this window</p>
         ) : (

@@ -13,7 +13,7 @@ export function OracleSummaryCard({ format }: { format: string }) {
   return (
     <Card className="bg-surface/40 p-8 text-center space-y-3">
       <div className="text-2xl">⚡</div>
-      <h2 className="text-base font-medium text-ink">
+      <h2 className="text-base font-medium text-ink font-display">
         Ask the Firemind about {label}
       </h2>
       <Link

@@ -7,13 +7,22 @@ const RATE_LIMIT_MS = 2000
 const USER_AGENT = 'Mozilla/5.0 (compatible; firemind-bot/1.0; +https://github.com/emiller6505/firemind)'
 const MAX_PAGES = 10
 
+const TAG = '[mtggoldfish-articles]'
+
 async function fetchText(url: string): Promise<string> {
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), 30_000)
   try {
     const res = await fetch(url, { headers: { 'User-Agent': USER_AGENT }, signal: controller.signal })
-    if (!res.ok) throw new Error(`HTTP ${res.status} fetching ${url}`)
+    if (!res.ok) {
+      console.error(`${TAG} API_ERROR: GET ${url} returned HTTP ${res.status}`)
+      throw new Error(`HTTP ${res.status} fetching ${url}`)
+    }
     return res.text()
+  } catch (err) {
+    if (err instanceof Error && err.message.startsWith('HTTP ')) throw err
+    console.error(`${TAG} API_ERROR: GET ${url} failed:`, err)
+    throw err
   } finally {
     clearTimeout(timeout)
   }
@@ -88,29 +97,49 @@ async function getAlreadyScrapedUrls(): Promise<Set<string>> {
 
 export async function scrapeNewMtggoldfishArticles(): Promise<void> {
   const alreadyScraped = await getAlreadyScrapedUrls()
-  let totalNew = 0, totalErrors = 0
+  let totalNew = 0, totalSkipped = 0, totalErrors = 0, apiFailures = 0
 
   for (let page = 1; page <= MAX_PAGES; page++) {
     const listingUrl = `${BASE_URL}/articles?page=${page}`
-    console.log(`[articles] Fetching listing page ${page}...`)
-    const listingHtml = await fetchText(listingUrl)
-    const allUrls = extractArticleUrls(listingHtml)
-    console.log(`[articles] Found ${allUrls.length} article URLs on page ${page}`)
+    console.log(`${TAG} Fetching listing page ${page}...`)
 
-    const newUrls = allUrls.filter(u => !alreadyScraped.has(u))
-    if (newUrls.length === 0) {
-      console.log(`[articles] All URLs on page ${page} already scraped — stopping`)
+    let listingHtml: string
+    try {
+      listingHtml = await fetchText(listingUrl)
+    } catch {
+      apiFailures++
+      console.error(`${TAG} API_ERROR: listing page ${page} failed, stopping pagination`)
       break
     }
 
+    const allUrls = extractArticleUrls(listingHtml)
+
+    if (allUrls.length === 0) {
+      if (page === 1) {
+        console.error(`${TAG} API_SCHEMA_CHANGE: listing page returned 0 article URLs — HTML structure may have changed`)
+        apiFailures++
+      }
+      break
+    }
+
+    console.log(`${TAG} Found ${allUrls.length} article URLs on page ${page}`)
+
+    const newUrls = allUrls.filter(u => !alreadyScraped.has(u))
+    if (newUrls.length === 0) {
+      totalSkipped += allUrls.length
+      console.log(`${TAG} All URLs on page ${page} already scraped — stopping`)
+      break
+    }
+    totalSkipped += allUrls.length - newUrls.length
+
     for (const [i, url] of newUrls.entries()) {
       try {
-        console.log(`[articles] Fetching ${url}`)
+        console.log(`${TAG} Fetching ${url}`)
         const html = await fetchText(url)
         const meta = extractArticleMeta(html)
 
         if (!meta.publishedAt) {
-          console.warn(`[articles] Skipping ${url} — no date found`)
+          console.warn(`${TAG} Skipping ${url} — no date found`)
           continue
         }
 
@@ -129,22 +158,20 @@ export async function scrapeNewMtggoldfishArticles(): Promise<void> {
 
         if (insertErr) {
           if (insertErr.code === '23505') {
-            // Article row exists but has no chunks (otherwise getAlreadyScrapedUrls
-            // would have filtered it). Fetch existing ID and reprocess.
             const { data: existing } = await supabase
               .from('articles')
               .select('id')
               .eq('url', url)
               .single()
             if (existing) {
-              console.log(`[articles] Reprocessing incomplete article: ${url}`)
+              console.log(`${TAG} Reprocessing incomplete article: ${url}`)
               await parseAndStoreArticle(existing.id, html)
               totalNew++
             }
             alreadyScraped.add(url)
             continue
           }
-          console.error(`[articles] Insert error for ${url}: ${insertErr.message}`)
+          console.error(`${TAG} Insert error for ${url}: ${insertErr.message}`)
           totalErrors++
           continue
         }
@@ -152,8 +179,9 @@ export async function scrapeNewMtggoldfishArticles(): Promise<void> {
         await parseAndStoreArticle(article.id, html)
         totalNew++
         alreadyScraped.add(url)
+        console.log(`${TAG} Stored: ${meta.title}`)
       } catch (err) {
-        console.error(`[articles] Error processing ${url}:`, err)
+        console.error(`${TAG} Error processing ${url}:`, err)
         totalErrors++
       }
 
@@ -163,5 +191,5 @@ export async function scrapeNewMtggoldfishArticles(): Promise<void> {
     await sleep(RATE_LIMIT_MS)
   }
 
-  console.log(`[articles] Done — new: ${totalNew}, errors: ${totalErrors}`)
+  console.log(`${TAG} SYNC_COMPLETE: new=${totalNew}, skipped=${totalSkipped}, errors=${totalErrors}, api_failures=${apiFailures}`)
 }

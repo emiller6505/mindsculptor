@@ -104,7 +104,7 @@ function MobileMetaList({ data, format }: { data: MetaShareEntry[]; format: stri
                 style={{ width: `${pct}%` }}
               />
             </div>
-            <span className="text-xs text-ash tabular-nums">{d.meta_share.toFixed(1)}%</span>
+            <span className="text-xs text-ash tabular-nums text-glow">{d.meta_share.toFixed(1)}%</span>
           </div>
         )
       })}

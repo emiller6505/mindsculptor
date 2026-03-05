@@ -116,7 +116,7 @@ export function extractCardNames(text: string, knownNames: Set<string>): string[
 // Cache card names across articles within a single sync run
 let cardNameCache: Set<string> | null = null
 
-async function loadKnownCardNames(): Promise<Set<string>> {
+export async function loadKnownCardNames(): Promise<Set<string>> {
   if (cardNameCache) return cardNameCache
 
   const { supabase } = await import('../lib/supabase.js')
@@ -143,7 +143,7 @@ async function loadKnownCardNames(): Promise<Set<string>> {
 // Cache archetype names similarly
 let archetypeNameCache: string[] | null = null
 
-async function loadArchetypeNames(): Promise<string[]> {
+export async function loadArchetypeNames(): Promise<string[]> {
   if (archetypeNameCache) return archetypeNameCache
 
   const { supabase } = await import('../lib/supabase.js')
@@ -156,7 +156,7 @@ async function loadArchetypeNames(): Promise<string[]> {
   return archetypeNameCache
 }
 
-function extractArchetypes(text: string, archetypeNames: string[]): string[] {
+export function extractArchetypes(text: string, archetypeNames: string[]): string[] {
   const lower = text.toLowerCase()
   return archetypeNames.filter(name => lower.includes(name.toLowerCase()))
 }
