@@ -274,3 +274,5 @@
 {"actor":"Ethan Miller","comment":"Added label: ux","created_at":"2026-03-04T10:19:16Z","event_type":"label_added","id":274,"issue_id":"mindsculptor-c0k","new_value":null,"old_value":null}
 {"actor":"Ethan Miller","comment":null,"created_at":"2026-03-04T10:23:32Z","event_type":"closed","id":275,"issue_id":"mindsculptor-hpa","new_value":"Closed","old_value":""}
 {"actor":"Ethan Miller","comment":null,"created_at":"2026-03-04T10:25:06Z","event_type":"closed","id":276,"issue_id":"mindsculptor-c0k","new_value":"Closed","old_value":""}
+{"actor":"Ethan Miller","comment":null,"created_at":"2026-03-04T10:27:49Z","event_type":"closed","id":277,"issue_id":"mindsculptor-vos","new_value":"Closed","old_value":""}
+{"actor":"Ethan Miller","comment":null,"created_at":"2026-03-04T10:30:16Z","event_type":"closed","id":278,"issue_id":"mindsculptor-usx","new_value":"Closed","old_value":""}
