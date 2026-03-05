@@ -34,6 +34,8 @@
 {"issue_id":"mindsculptor-9jc","label":"phase-2"}
 {"issue_id":"mindsculptor-agd","label":"backend"}
 {"issue_id":"mindsculptor-agd","label":"frontend"}
+{"issue_id":"mindsculptor-ali","label":"backend"}
+{"issue_id":"mindsculptor-ali","label":"infra"}
 {"issue_id":"mindsculptor-bg2","label":"data"}
 {"issue_id":"mindsculptor-bg2","label":"infra"}
 {"issue_id":"mindsculptor-c0k","label":"backend"}
