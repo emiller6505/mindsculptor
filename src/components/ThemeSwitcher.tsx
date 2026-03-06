@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTheme, THEMES, type Theme } from '@/hooks/useTheme'
 
 const THEME_LABELS: Record<Theme, string> = {
-  dark: 'Izzet Dark',
+  dark: 'Iz It Dark?',
   light: 'Blueprint',
   terminal: 'Terminal',
   arcana: 'Arcana',

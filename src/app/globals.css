@@ -43,10 +43,12 @@
     --font-body:     inherit;
     --text-glow:     none;
     --bg-pattern:
-      linear-gradient(rgb(var(--color-spark) / 0.025) 1px, transparent 1px),
-      linear-gradient(90deg, rgb(var(--color-spark) / 0.025) 1px, transparent 1px);
-    --bg-size: 48px 48px;
-    --bg-position: 24px 24px;
+      linear-gradient(rgb(var(--color-spark) / 0.05) 1px, transparent 1px),
+      linear-gradient(90deg, rgb(var(--color-spark) / 0.05) 1px, transparent 1px),
+      linear-gradient(rgb(var(--color-spark) / 0.09) 1px, transparent 1px),
+      linear-gradient(90deg, rgb(var(--color-spark) / 0.09) 1px, transparent 1px);
+    --bg-size: 24px 24px, 24px 24px, 120px 120px, 120px 120px;
+    --bg-position: 0 0, 0 0, 0 0, 0 0;
   }
 
   [data-theme="terminal"] {
