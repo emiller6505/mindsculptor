@@ -119,7 +119,7 @@ describe('fetchArchetype', () => {
 
   it('throws on supabase error', async () => {
     mockSupabase({ data: null, error: { message: 'connection failed' } })
-    await expect(fetchArchetype('boros-energy-modern')).rejects.toThrow('connection failed')
+    await expect(fetchArchetype('boros-energy-modern')).rejects.toThrow('fetch_archetype')
   })
 })
 

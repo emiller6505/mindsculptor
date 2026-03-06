@@ -1,5 +1,6 @@
 import { createStaticClient } from '@/lib/supabase-static'
 import { createClient } from '@/lib/supabase-server'
+import { DbError } from '@/lib/db-error'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -48,7 +49,7 @@ export async function fetchArchetype(archetypeId: string): Promise<Archetype | n
     .eq('id', archetypeId)
     .maybeSingle()
 
-  if (error) throw new Error(error.message)
+  if (error) throw new DbError('fetch_archetype', error.message)
   return data
 }
 
@@ -62,7 +63,7 @@ export async function fetchLatestSnapshot(archetypeId: string): Promise<LatestSn
     .order('window_start', { ascending: false })
     .limit(1)
 
-  if (error) throw new Error(error.message)
+  if (error) throw new DbError('fetch_latest_snapshot', error.message)
   if (!data || data.length === 0) return null
   return data[0]
 }
@@ -75,7 +76,7 @@ export async function fetchShareHistory(archetypeId: string): Promise<SharePoint
     .eq('archetype_id', archetypeId)
     .order('window_end', { ascending: true })
 
-  if (error) throw new Error(error.message)
+  if (error) throw new DbError('fetch_share_history', error.message)
   if (!data) return []
 
   // Deduplicate by window_end, keeping shortest window (30d preferred)
@@ -126,7 +127,7 @@ export async function fetchRecentResults(archetypeId: string): Promise<RecentRes
     .not('decks.placement', 'is', null)
     .limit(50)
 
-  if (error) throw new Error(error.message)
+  if (error) throw new DbError('fetch_recent_results', error.message)
   if (!data) return []
 
   return extractRecentResults(data)
@@ -166,7 +167,7 @@ export async function fetchAllArchetypeIds(): Promise<{ format: string; archetyp
     .from('archetypes')
     .select('id, format')
 
-  if (error) throw new Error(error.message)
+  if (error) throw new DbError('fetch_archetype_ids', error.message)
   if (!data) return []
 
   return data.map(row => ({ format: row.format, archetype: row.id }))

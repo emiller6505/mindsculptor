@@ -1,10 +1,11 @@
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { makeChainable, DECK_FIXTURE, CARD_FIXTURE, INTENT_FIXTURE } from './helpers.js'
 
-vi.mock('../../lib/supabase.js', () => ({ supabase: { from: vi.fn(), rpc: vi.fn() } }))
+const { mockFrom, mockRpc } = vi.hoisted(() => ({ mockFrom: vi.fn(), mockRpc: vi.fn() }))
+vi.mock('../../lib/supabase-static.js', () => ({ createStaticClient: () => ({ from: mockFrom, rpc: mockRpc }) }))
 vi.mock('../../lib/voyage.js', () => ({ embed: vi.fn().mockResolvedValue([[0.1, 0.2, 0.3]]) }))
 
-import { supabase } from '../../lib/supabase.js'
+const supabase = { from: mockFrom, rpc: mockRpc }
 import { embed } from '../../lib/voyage.js'
 import { retrieveContext, fetchRelevantArticles } from '../retrieval.js'
 

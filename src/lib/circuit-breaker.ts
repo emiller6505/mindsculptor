@@ -20,12 +20,11 @@ export async function checkCircuitBreaker(supabase: SupabaseClient): Promise<boo
   const todayUTC = new Date()
   todayUTC.setUTCHours(0, 0, 0, 0)
 
-  const { count } = await supabase
-    .from('oracle_queries')
-    .select('*', { count: 'exact', head: true })
-    .gte('window_start', todayUTC.toISOString())
+  const { data } = await supabase.rpc('sum_daily_queries', {
+    p_since: todayUTC.toISOString(),
+  })
 
-  cachedTotal = count ?? 0
+  cachedTotal = typeof data === 'number' ? data : 0
   lastRefresh = now
   tripped = cachedTotal >= DAILY_TOTAL_LIMIT
 

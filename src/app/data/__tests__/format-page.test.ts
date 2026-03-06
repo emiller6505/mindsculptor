@@ -222,7 +222,7 @@ describe('fetchCurrentWindow', () => {
   it('throws on supabase error', async () => {
     mockSupabase({ data: null, error: { message: 'connection failed' } })
 
-    await expect(fetchCurrentWindow('modern', 30)).rejects.toThrow('connection failed')
+    await expect(fetchCurrentWindow('modern', 30)).rejects.toThrow('fetch_latest_window')
   })
 })
 

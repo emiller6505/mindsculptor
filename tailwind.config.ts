@@ -19,6 +19,7 @@ export default {
         ink:     'rgb(var(--color-ink) / <alpha-value>)',
         ash:     'rgb(var(--color-ash) / <alpha-value>)',
         danger:  'rgb(var(--color-danger) / <alpha-value>)',
+        brand:   'rgb(var(--color-brand) / <alpha-value>)',
       },
       fontFamily: {
         sans: ['var(--font-geist-sans)', ...fontFamily.sans],

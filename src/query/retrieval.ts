@@ -1,6 +1,12 @@
-import { supabase } from '../lib/supabase'
+import { createStaticClient } from '../lib/supabase-static'
+
+const supabase = createStaticClient()
 import type { Trace } from '../lib/trace'
 import type { Intent } from './intent'
+
+function escapeLike(s: string): string {
+  return s.replace(/[%_\\]/g, c => `\\${c}`)
+}
 
 // Voyage embeddings are optional — only used if VOYAGE_API_KEY is set
 async function resolveArchetypeIds(archetypes: string[], format: string | null): Promise<string[] | null> {
@@ -348,9 +354,10 @@ async function attachDeckCosts(decks: RawDeck[]): Promise<DeckSummary[]> {
     if (stillMissing.length > 0) {
       const dfcResults = await Promise.all(
         stillMissing.map(async name => {
-          const { data: front } = await supabase.from('cards').select('name, usd, tix').like('name', `${name} // %`).limit(10)
+          const escaped = escapeLike(name)
+          const { data: front } = await supabase.from('cards').select('name, usd, tix').like('name', `${escaped} // %`).limit(10)
           if (front && front.length > 0) return front
-          const { data: back } = await supabase.from('cards').select('name, usd, tix').like('name', `% // ${name}`).limit(10)
+          const { data: back } = await supabase.from('cards').select('name, usd, tix').like('name', `% // ${escaped}`).limit(10)
           return back ?? []
         })
       )
@@ -443,7 +450,7 @@ async function fetchCardGlossary(
             const { data: front } = await supabase
               .from('cards')
               .select('name, mana_cost, type_line, oracle_text')
-              .like('name', `${name} // %`)
+              .like('name', `${escapeLike(name)} // %`)
               .limit(1)
             return { originalName: name, row: front?.[0] ?? null }
           })
@@ -482,7 +489,7 @@ async function fetchCardInfo(card: string, format: string | null, cutoff: string
   const { data: cardRow, error: cardErr } = await supabase
     .from('cards')
     .select('name, oracle_text, type_line, mana_cost, cmc')
-    .ilike('name', card)
+    .ilike('name', escapeLike(card))
     .limit(1)
     .maybeSingle()
 

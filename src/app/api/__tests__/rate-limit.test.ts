@@ -5,6 +5,9 @@ vi.mock('@/lib/supabase-server', () => ({ createClient: vi.fn() }))
 vi.mock('@/lib/query-cache', () => ({ cacheGet: vi.fn().mockReturnValue(null), cacheSet: vi.fn() }))
 vi.mock('@/lib/circuit-breaker', () => ({ checkCircuitBreaker: vi.fn() }))
 vi.mock('@/lib/ip-rate-limit', () => ({ checkIpLimit: vi.fn() }))
+vi.mock('@/lib/get-client-ip', () => ({ getClientIp: vi.fn(() => '127.0.0.1') }))
+vi.mock('@/lib/connection-limiter', () => ({ acquireConnection: vi.fn(() => true), releaseConnection: vi.fn() }))
+vi.mock('@/lib/query-blocklist', () => ({ checkBlocklist: vi.fn(() => ({ blocked: false, pattern: '' })) }))
 
 import { handleQueryStream } from '@/query/index'
 import { createClient } from '@/lib/supabase-server'
@@ -13,7 +16,6 @@ import { checkCircuitBreaker } from '@/lib/circuit-breaker'
 import { checkIpLimit } from '@/lib/ip-rate-limit'
 import { POST } from '../query/route'
 import { USER_LIMIT, WINDOW_MS } from '@/lib/rate-limit-constants'
-import { makeChainable } from '@/query/__tests__/helpers'
 
 const MOCK_INTENT = { format: 'modern' as const, question_type: 'metagame' as const, archetype: null, archetype_b: null, opponent_archetype: null, card: null, card_mentions: [] as string[], timeframe_days: 90 as const }
 const MOCK_DATA = { format: 'modern', window_days: 90, tournaments_count: 1, top_decks: [], card_info: null, card_glossary: [], article_chunks: [], confidence: 'HIGH' as const }
@@ -46,31 +48,25 @@ async function readSSEEvents(res: Response): Promise<Array<{ event: string; data
   return events
 }
 
-let mockUpsert: ReturnType<typeof vi.fn>
-let mockFrom: ReturnType<typeof vi.fn>
+let mockRpc: ReturnType<typeof vi.fn>
 let mockSupabase: Record<string, unknown>
 
 function setupMocks(opts: {
   user: { id: string } | null
-  oracleRow: { count: number; window_start: string } | null
+  rpcResult: { allowed: boolean; new_count: number; window_start: string }
 }) {
-  const oracleChain = makeChainable(
-    { data: opts.oracleRow, error: null },
-    { data: opts.oracleRow, error: opts.oracleRow ? null : { message: 'not found' } },
-  )
-
-  mockUpsert = vi.fn().mockResolvedValue({ error: null })
-
-  mockFrom = vi.fn().mockImplementation((table: string) => {
-    if (table === 'oracle_queries') {
-      return { ...oracleChain, upsert: mockUpsert }
-    }
-    return makeChainable({ data: [], error: null })
+  mockRpc = vi.fn().mockResolvedValue({
+    data: [opts.rpcResult],
   })
 
   mockSupabase = {
     auth: { getUser: vi.fn().mockResolvedValue({ data: { user: opts.user } }) },
-    from: mockFrom,
+    rpc: mockRpc,
+    from: vi.fn().mockReturnValue({
+      select: vi.fn().mockReturnValue({
+        gte: vi.fn().mockResolvedValue({ count: 0 }),
+      }),
+    }),
   }
 
   vi.mocked(createClient).mockResolvedValue(mockSupabase as never)
@@ -90,7 +86,8 @@ beforeEach(() => {
 
 describe('POST /api/query rate limiting', () => {
   it('anon user gets tier=anon with remaining=null, resets_at=null', async () => {
-    setupMocks({ user: null, oracleRow: null })
+    const windowStart = new Date().toISOString()
+    setupMocks({ user: null, rpcResult: { allowed: true, new_count: 1, window_start: windowStart } })
 
     const res = await POST(makeReq({ query: 'test' }))
     const events = await readSSEEvents(res)
@@ -102,8 +99,9 @@ describe('POST /api/query rate limiting', () => {
     expect(rl.resets_at).toBeNull()
   })
 
-  it('authed user with no existing row gets remaining = USER_LIMIT - 1', async () => {
-    setupMocks({ user: { id: 'u1' }, oracleRow: null })
+  it('authed user with first query gets remaining = USER_LIMIT - 1', async () => {
+    const windowStart = new Date().toISOString()
+    setupMocks({ user: { id: 'u1' }, rpcResult: { allowed: true, new_count: 1, window_start: windowStart } })
 
     const res = await POST(makeReq({ query: 'test' }))
     const events = await readSSEEvents(res)
@@ -115,75 +113,35 @@ describe('POST /api/query rate limiting', () => {
     expect(rl.resets_at).toBeTruthy()
   })
 
-  it('authed user with no existing row upserts count=1 with new window_start', async () => {
-    setupMocks({ user: { id: 'u1' }, oracleRow: null })
+  it('authed user calls atomic RPC with correct params', async () => {
+    const windowStart = new Date().toISOString()
+    setupMocks({ user: { id: 'u1' }, rpcResult: { allowed: true, new_count: 1, window_start: windowStart } })
 
     const res = await POST(makeReq({ query: 'test' }))
-    await res.text() // drain stream so upsert fires
+    await res.text()
 
-    expect(mockUpsert).toHaveBeenCalledWith(
-      expect.objectContaining({ user_id: 'u1', count: 1 }),
-      { onConflict: 'user_id' },
-    )
+    expect(mockRpc).toHaveBeenCalledWith('increment_oracle_query', {
+      p_user_id: 'u1',
+      p_limit: USER_LIMIT,
+      p_window_ms: WINDOW_MS,
+    })
   })
 
-  it('authed user with active window (count=5) gets remaining=4', async () => {
-    const windowStart = new Date(Date.now() - 1000 * 60 * 60).toISOString() // 1h ago
-    setupMocks({ user: { id: 'u1' }, oracleRow: { count: 5, window_start: windowStart } })
-
-    const res = await POST(makeReq({ query: 'test' }))
-    const events = await readSSEEvents(res)
-    const meta = events[0].data as Record<string, unknown>
-    const rl = meta.rate_limit as Record<string, unknown>
-
-    expect(rl.remaining).toBe(USER_LIMIT - 5 - 1)
-  })
-
-  it('authed user with active window upserts count+1 with same window_start', async () => {
+  it('authed user with active window (count=6) gets remaining=4', async () => {
     const windowStart = new Date(Date.now() - 1000 * 60 * 60).toISOString()
-    setupMocks({ user: { id: 'u1' }, oracleRow: { count: 5, window_start: windowStart } })
-
-    const res = await POST(makeReq({ query: 'test' }))
-    await res.text()
-
-    expect(mockUpsert).toHaveBeenCalledWith(
-      expect.objectContaining({ user_id: 'u1', count: 6, window_start: windowStart }),
-      { onConflict: 'user_id' },
-    )
-  })
-
-  it('authed user with expired window (>24h) is treated as fresh', async () => {
-    const expiredStart = new Date(Date.now() - WINDOW_MS - 1000).toISOString() // 24h + 1s ago
-    setupMocks({ user: { id: 'u1' }, oracleRow: { count: 8, window_start: expiredStart } })
+    setupMocks({ user: { id: 'u1' }, rpcResult: { allowed: true, new_count: 6, window_start: windowStart } })
 
     const res = await POST(makeReq({ query: 'test' }))
     const events = await readSSEEvents(res)
     const meta = events[0].data as Record<string, unknown>
     const rl = meta.rate_limit as Record<string, unknown>
 
-    expect(rl.remaining).toBe(USER_LIMIT - 1)
-  })
-
-  it('authed user with expired window upserts count=1 with new window_start', async () => {
-    const expiredStart = new Date(Date.now() - WINDOW_MS - 1000).toISOString()
-    setupMocks({ user: { id: 'u1' }, oracleRow: { count: 8, window_start: expiredStart } })
-
-    const res = await POST(makeReq({ query: 'test' }))
-    await res.text()
-
-    expect(mockUpsert).toHaveBeenCalledWith(
-      expect.objectContaining({ user_id: 'u1', count: 1 }),
-      { onConflict: 'user_id' },
-    )
-    // window_start should be recent, not the expired one
-    const upsertArg = mockUpsert.mock.calls[0][0]
-    const upsertedStart = new Date(upsertArg.window_start).getTime()
-    expect(Math.abs(upsertedStart - Date.now())).toBeLessThan(5000)
+    expect(rl.remaining).toBe(USER_LIMIT - 6)
   })
 
   it('returns 429 when authed user is at the limit', async () => {
     const windowStart = new Date(Date.now() - 1000 * 60 * 60).toISOString()
-    setupMocks({ user: { id: 'u1' }, oracleRow: { count: USER_LIMIT, window_start: windowStart } })
+    setupMocks({ user: { id: 'u1' }, rpcResult: { allowed: false, new_count: USER_LIMIT, window_start: windowStart } })
 
     const res = await POST(makeReq({ query: 'test' }))
 
@@ -196,7 +154,7 @@ describe('POST /api/query rate limiting', () => {
 
   it('429 resets_at is window_start + 24h', async () => {
     const windowStart = new Date(Date.now() - 1000 * 60 * 60).toISOString()
-    setupMocks({ user: { id: 'u1' }, oracleRow: { count: USER_LIMIT, window_start: windowStart } })
+    setupMocks({ user: { id: 'u1' }, rpcResult: { allowed: false, new_count: USER_LIMIT, window_start: windowStart } })
 
     const res = await POST(makeReq({ query: 'test' }))
     const body = await res.json()
@@ -205,13 +163,13 @@ describe('POST /api/query rate limiting', () => {
     expect(body.rate_limit.resets_at).toBe(expected)
   })
 
-  it('anon user does not trigger oracle_queries lookup or upsert', async () => {
-    setupMocks({ user: null, oracleRow: null })
+  it('anon user does not call RPC', async () => {
+    const windowStart = new Date().toISOString()
+    setupMocks({ user: null, rpcResult: { allowed: true, new_count: 1, window_start: windowStart } })
 
     const res = await POST(makeReq({ query: 'test' }))
     await res.text()
 
-    expect(mockFrom).not.toHaveBeenCalledWith('oracle_queries')
-    expect(mockUpsert).not.toHaveBeenCalled()
+    expect(mockRpc).not.toHaveBeenCalled()
   })
 })

@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase-server'
+import { DbError } from '@/lib/db-error'
 
 const RANGE_DAYS: Record<string, number> = { '30d': 30, '60d': 60, '90d': 90 }
 
@@ -67,7 +68,7 @@ export async function fetchCurrentWindow(format: string, rangeDays: number) {
     .order('window_end', { ascending: false })
     .limit(1)
 
-  if (latestErr) throw new Error(latestErr.message)
+  if (latestErr) throw new DbError('fetch_latest_window', latestErr.message)
   if (!latest?.length) return []
 
   const windowEnd = latest[0].window_end as string
@@ -85,7 +86,7 @@ export async function fetchCurrentWindow(format: string, rangeDays: number) {
     .eq('window_start', windowStart)
     .order('meta_share', { ascending: false })
 
-  if (error) throw new Error(error.message)
+  if (error) throw new DbError('fetch_current_window', error.message)
   return (data ?? []) as SnapshotRow[]
 }
 
@@ -171,7 +172,7 @@ export async function fetchTrendLines(format: string) {
     .eq('format', format)
     .order('window_end', { ascending: true })
 
-  if (error) throw new Error(error.message)
+  if (error) throw new DbError('fetch_trend_lines', error.message)
   const rows = (data ?? []) as SnapshotRow[]
 
   if (rows.length === 0) return []
