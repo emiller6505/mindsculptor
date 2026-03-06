@@ -177,9 +177,8 @@ export default function Nav() {
           <div className="md:hidden border-t border-edge bg-canvas/95 backdrop-blur-sm px-6 py-4 space-y-1">
             <MobileNavLink href="/chat" active={path.startsWith('/chat')}>Chat</MobileNavLink>
             <MobileNavLink href="/data" active={path.startsWith('/data')}>Metagame Data</MobileNavLink>
-            <div className="flex items-center gap-2 py-2">
-              <span className="text-sm text-ash">Theme</span>
-              <ThemeSwitcher />
+            <div className="py-2">
+              <ThemeSwitcher label="Theme" />
             </div>
             <div className="border-t border-edge my-3" />
             {user ? (

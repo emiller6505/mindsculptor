@@ -89,9 +89,13 @@ export async function streamPipeline(
   // Stage 4: LLM streaming
   emit('progress', { stage: 'streaming', label: 'Writing…' })
 
+  const onRetry = () => {
+    emit('progress', { stage: 'streaming', label: 'The Firemind is getting a lot of questions right now. Your query may take up to a minute.' })
+  }
+
   const stream = history.length > 0
-    ? llm.completeStreamWithHistory(system, [...history, { role: 'user', content: userMsg }], { maxTokens: 2048 })
-    : llm.completeStream(system, userMsg, { maxTokens: 2048 })
+    ? llm.completeStreamWithHistory(system, [...history, { role: 'user', content: userMsg }], { maxTokens: 2048, onRetry })
+    : llm.completeStream(system, userMsg, { maxTokens: 2048, onRetry })
 
   let fullAnswer = ''
   for await (const chunk of stream) {

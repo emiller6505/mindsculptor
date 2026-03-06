@@ -11,6 +11,7 @@ const LLM_LABEL_DELAY_MS = 500    // pause between LLM archetype label calls to 
 interface DeckRecord {
   id: string
   cardSet: Set<string>
+  mainboard: { name: string; qty: number }[]
 }
 
 interface Cluster {
@@ -37,7 +38,7 @@ export async function clusterArchetypes(format: string, windowDays = DEFAULT_WIN
   const rawDecks: DeckRecord[] = data.flatMap(row => {
     const rawList = row.raw_list as { mainboard: { name: string; qty: number }[] } | null
     if (!rawList?.mainboard?.length) return []
-    return [{ id: row.id, cardSet: new Set(rawList.mainboard.map(c => c.name)) }]
+    return [{ id: row.id, cardSet: new Set(rawList.mainboard.map(c => c.name)), mainboard: rawList.mainboard }]
   })
 
   // Option C: sort by typicality so the most representative decks seed first.
@@ -131,10 +132,17 @@ export async function clusterArchetypes(format: string, windowDays = DEFAULT_WIN
     .in('deck_id', deckIds)
     .eq('method', 'jaccard')
 
+  // Load existing archetype names so the LLM can match against known names
+  const { data: existingArchetypes } = await supabase
+    .from('archetypes')
+    .select('name')
+    .eq('format', format)
+  const knownNames = (existingArchetypes ?? []).map(a => a.name)
+
   for (let i = 0; i < viable.length; i++) {
     if (i > 0) await new Promise(resolve => setTimeout(resolve, LLM_LABEL_DELAY_MS))
     const cluster = viable[i]
-    const archetypeId = await labelAndUpsertArchetype(cluster, format)
+    const archetypeId = await labelAndUpsertArchetype(cluster, format, knownNames)
     if (!archetypeId) continue
 
     const rows = cluster.decks.map(d => ({
@@ -183,24 +191,44 @@ function avgJaccard(deck: DeckRecord, cluster: Cluster): number {
   return sum / others.length
 }
 
-function clusterCardFrequency(cluster: Cluster): { name: string; freq: number }[] {
+function clusterCardFrequency(cluster: Cluster): { name: string; freq: number; avgQty: number }[] {
   const counts = new Map<string, number>()
+  const qtyTotals = new Map<string, number>()
   for (const deck of cluster.decks) {
     for (const card of deck.cardSet) counts.set(card, (counts.get(card) ?? 0) + 1)
+    for (const entry of deck.mainboard) {
+      qtyTotals.set(entry.name, (qtyTotals.get(entry.name) ?? 0) + entry.qty)
+    }
   }
   return [...counts.entries()]
-    .map(([name, count]) => ({ name, freq: count / cluster.decks.length }))
+    .map(([name, count]) => ({
+      name,
+      freq: count / cluster.decks.length,
+      avgQty: parseFloat(((qtyTotals.get(name) ?? 0) / count).toFixed(1)),
+    }))
     .sort((a, b) => b.freq - a.freq)
     .slice(0, 15)
 }
 
-// Derive actual color identity from mana_cost DB data so the LLM label doesn't
-// have to guess colors from card name associations (e.g. Springleaf Drum ≠ blue).
-async function deriveColorIdentity(cardNames: string[]): Promise<string> {
-  const { data } = await supabase.from('cards').select('mana_cost').in('name', cardNames)
-  const colors = new Set<string>()
+interface CardMetadata {
+  mana_cost: string | null
+  oracle_text: string | null
+  type_line: string | null
+}
+
+async function fetchCardMetadata(cardNames: string[]): Promise<Map<string, CardMetadata>> {
+  const { data } = await supabase.from('cards').select('name, mana_cost, oracle_text, type_line').in('name', cardNames)
+  const map = new Map<string, CardMetadata>()
   for (const row of data ?? []) {
-    for (const m of (row.mana_cost ?? '').matchAll(/[WUBRG]/g)) colors.add(m[0])
+    map.set(row.name, { mana_cost: row.mana_cost, oracle_text: row.oracle_text, type_line: row.type_line })
+  }
+  return map
+}
+
+function deriveColorIdentityFromMetadata(metadata: Map<string, CardMetadata>): string {
+  const colors = new Set<string>()
+  for (const card of metadata.values()) {
+    for (const m of (card.mana_cost ?? '').matchAll(/[WUBRG]/g)) colors.add(m[0])
   }
   if (colors.size === 0) return 'Colorless'
   const COLOR_ORDER = ['W', 'U', 'B', 'R', 'G']
@@ -212,22 +240,46 @@ async function deriveColorIdentity(cardNames: string[]): Promise<string> {
   return sorted.join('')
 }
 
-async function labelAndUpsertArchetype(cluster: Cluster, format: string): Promise<string | null> {
+function truncateOracle(text: string | null): string {
+  if (!text) return ''
+  return text.length > 120 ? text.slice(0, 117) + '...' : text
+}
+
+async function labelAndUpsertArchetype(cluster: Cluster, format: string, knownNames: string[]): Promise<string | null> {
   const topCards = clusterCardFrequency(cluster)
-  const cardList = topCards.map(c => `${c.name} (${Math.round(c.freq * 100)}%)`).join(', ')
-  const colorIdentity = await deriveColorIdentity(topCards.map(c => c.name))
+  const metadata = await fetchCardMetadata(topCards.map(c => c.name))
+  const colorIdentity = deriveColorIdentityFromMetadata(metadata)
+
+  const cardLines = topCards.map(c => {
+    const meta = metadata.get(c.name)
+    const typeLine = meta?.type_line ?? 'Unknown'
+    const oracle = truncateOracle(meta?.oracle_text ?? null)
+    return `${c.name} | ${c.avgQty}x | ${Math.round(c.freq * 100)}% | ${typeLine} | ${oracle}`
+  }).join('\n')
+
+  const knownList = knownNames.length > 0 ? knownNames.join(', ') : '(none yet)'
 
   const raw = await llm.complete(
-    `You are labeling Magic: the Gathering archetypes for competitive tournament data. Given the most common mainboard cards and confirmed color identity from a cluster of ${format} decks, return ONLY the canonical archetype name — nothing else. No explanation, no punctuation, no quotes.
+    `You are labeling Magic: the Gathering archetypes for competitive tournament data. Return ONLY the canonical archetype name — nothing else. No explanation, no punctuation, no quotes.
 
 Rules:
 - Use the name competitive players actually use, not a description of the cards.
 - Use the provided color identity — do NOT infer colors from card names or historic deck associations.
 - Use guild/shard names for the provided colors (Boros = WR, Izzet = UR, Grixis = UBR, Azorius = WU, etc.).
-- Name after the deck's strategy or engine, not individual card names or creature types embedded in card titles.
-- Prefer mechanic or engine names when clear: Energy, Reanimator, Ramp, Affinity, Burn, Control.
+- If this cluster matches a known archetype from the reference list, use that exact name.
+- Prefer known names over inventing new ones.
+- Only invent a new name if the cluster clearly doesn't match any known archetype.
+- Card quantities matter: 4x of a card = core engine piece, 1x = toolbox/utility.
+- Name after the deck's strategy or engine, not individual card names.
 - Examples: "Izzet Murktide", "Mono-Red Burn", "Amulet Titan", "Eldrazi Ramp", "Boros Energy", "Domain Zoo", "Living End".`,
-    `${format} cluster. Color identity: ${colorIdentity}. Top mainboard cards (name: frequency): ${cardList}`,
+    `Format: ${format}
+Color identity: ${colorIdentity}
+Cluster size: ${cluster.decks.length} decks
+
+Known archetypes in ${format}: [${knownList}]
+
+Top mainboard cards (name | avg qty | % of decks | type | oracle text):
+${cardLines}`,
     { maxTokens: 32, temperature: 0 },
   )
 

@@ -17,7 +17,7 @@ const THEME_SWATCHES: Record<Theme, string[]> = {
   arcana: ['#F4E8C9', '#EBDCB9', '#B49B6E', '#7C3AED', '#1C140C'],
 }
 
-export default function ThemeSwitcher() {
+export default function ThemeSwitcher({ label }: { label?: string }) {
   const { theme, setTheme } = useTheme()
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
@@ -46,9 +46,10 @@ export default function ThemeSwitcher() {
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen(o => !o)}
-        className="w-8 h-8 flex items-center justify-center rounded-md text-ash hover:text-ink hover:bg-surface transition-colors"
+        className="flex items-center gap-2 h-8 rounded-md text-ash hover:text-ink hover:bg-surface transition-colors px-1"
         aria-label="Switch theme"
       >
+        {label && <span className="text-sm">{label}</span>}
         <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
           <path
             d="M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1Z"
@@ -63,7 +64,7 @@ export default function ThemeSwitcher() {
       </button>
 
       {open && (
-        <div className="absolute right-0 top-10 w-[180px] rounded-md border border-edge bg-surface shadow-lg py-1 z-50">
+        <div className="absolute left-0 sm:left-auto sm:right-0 top-10 w-[180px] rounded-md border border-edge bg-surface shadow-lg py-1 z-50">
           {THEMES.map(t => {
             const active = t === theme
             return (

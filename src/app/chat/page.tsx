@@ -245,6 +245,8 @@ function ChatPageInner() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null)
       if (!session?.user) {
+        // Clear previous user's conversation
+        setMessages([])
         // Re-read anon bucket (Nav exhausts it on sign-out)
         const count = getAnonCount()
         setAnonCountState(count)
