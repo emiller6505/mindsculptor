@@ -4,7 +4,7 @@ services:
     name: firemind-web
     runtime: node
     plan: starter
-    buildCommand: npm install && npm run build
+    buildCommand: npm install && npm test && npm run build
     startCommand: npm start
     envVars:
       - key: NODE_ENV
@@ -26,7 +26,7 @@ services:
     runtime: node
     plan: starter
     schedule: "0 */12 * * *"     # every 12 hours
-    buildCommand: npm install
+    buildCommand: npm install && npm test
     startCommand: npm run scrape
     envVars:
       - key: NODE_ENV
@@ -43,7 +43,7 @@ services:
     runtime: node
     plan: starter
     schedule: "0 3 * * 1"         # every Monday at 3am UTC
-    buildCommand: npm install
+    buildCommand: npm install && npm test
     startCommand: npm run sync:scryfall
     envVars:
       - key: NODE_ENV
@@ -58,7 +58,7 @@ services:
     runtime: node
     plan: starter
     schedule: "30 */12 * * *"     # 30min after scrape-mtgo, every 12 hours
-    buildCommand: npm install
+    buildCommand: npm install && npm test
     startCommand: npm run cluster
     envVars:
       - key: NODE_ENV
@@ -75,7 +75,7 @@ services:
     runtime: node
     plan: starter
     schedule: "45 */12 * * *"     # 15min after cluster, every 12 hours
-    buildCommand: npm install
+    buildCommand: npm install && npm test
     startCommand: npm run snapshot
     envVars:
       - key: NODE_ENV
@@ -90,7 +90,7 @@ services:
     runtime: node
     plan: starter
     schedule: "0 4 * * 1"         # every Monday at 4am UTC (after Scryfall sync)
-    buildCommand: npm install
+    buildCommand: npm install && npm test
     startCommand: npm run sync:articles
     envVars:
       - key: NODE_ENV
@@ -107,7 +107,7 @@ services:
     runtime: node
     plan: starter
     schedule: "0 1 * * *"         # daily at 1am UTC, after new archetypes are labeled
-    buildCommand: npm install
+    buildCommand: npm install && npm test
     startCommand: npm run embed
     envVars:
       - key: NODE_ENV
