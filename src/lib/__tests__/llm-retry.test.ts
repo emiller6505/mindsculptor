@@ -126,7 +126,7 @@ describe('complete retry on rate limit', () => {
 
     const err = await result
     expect(err).toBeInstanceOf(MockAPIError)
-    expect((err as MockAPIError).status).toBe(429)
+    expect((err as InstanceType<typeof MockAPIError>).status).toBe(429)
     expect(mockCreate).toHaveBeenCalledTimes(4)
   })
 

@@ -17,7 +17,7 @@ export function OracleSummaryCard({ format }: { format: string }) {
         Ask the Firemind about {label}
       </h2>
       <Link
-        href={`/chat?q=${query}`}
+        href={`/chat`}
         className={cn(buttonVariants(), 'inline-block')}
       >
         Ask the Oracle →
