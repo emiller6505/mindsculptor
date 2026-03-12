@@ -51,16 +51,25 @@ export interface MtgoEventData {
 // Helpers
 // ---------------------------------------------------------------------------
 
-async function fetchHtml(url: string): Promise<string> {
-  const controller = new AbortController()
-  const timeout = setTimeout(() => controller.abort(), 30_000)
-  try {
-    const res = await fetch(url, { headers: { 'User-Agent': USER_AGENT }, signal: controller.signal })
-    if (!res.ok) throw new Error(`HTTP ${res.status} fetching ${url}`)
-    return res.text()
-  } finally {
-    clearTimeout(timeout)
+async function fetchHtml(url: string, retries = 3): Promise<string> {
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 60_000)
+    try {
+      const res = await fetch(url, { headers: { 'User-Agent': USER_AGENT }, signal: controller.signal })
+      if (!res.ok) throw new Error(`HTTP ${res.status} fetching ${url}`)
+      return res.text()
+    } catch (err) {
+      clearTimeout(timeout)
+      if (attempt === retries) throw err
+      const backoff = attempt * 5_000
+      console.log(`[mtgo] fetch attempt ${attempt}/${retries} failed, retrying in ${backoff / 1000}s...`)
+      await sleep(backoff)
+    } finally {
+      clearTimeout(timeout)
+    }
   }
+  throw new Error('unreachable')
 }
 
 export function extractEventData(html: string): MtgoEventData | null {
